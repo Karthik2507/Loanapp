@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · LoanLedger{% endblock %}
+{% block crumbs %}<strong>Dashboard</strong>{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="title-block">
+    <h1>Hello, {{ current_user.full_name.split(' ')[0] }} 👋</h1>
+    <div class="sub">Here's your portfolio at a glance.</div>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('reports.index') }}" class="btn secondary"><i data-lucide="file-bar-chart-2"></i> Reports</a>
+    <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> New Loan</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">Total Loan Amount</div><div class="value" data-stat="total_loan_amount">{{ stats.total_loan_amount|money }}</div></div>
+  <div class="kpi"><div class="label">Total Interest Payable</div><div class="value" data-stat="total_interest">{{ stats.total_interest|money }}</div></div>
+  <div class="kpi"><div class="label">Active Loans</div><div class="value" data-stat="active">{{ stats.active }}</div></div>
+  <div class="kpi"><div class="label">Completed Loans</div><div class="value" data-stat="completed">{{ stats.completed }}</div></div>
+  <div class="kpi"><div class="label">Closed This Month</div><div class="value" data-stat="closed_this_month">{{ stats.closed_this_month }}</div></div>
+  <div class="kpi"><div class="label">Remaining Balance</div><div class="value" data-stat="remaining">{{ stats.remaining|money }}</div></div>
+  <div class="kpi"><div class="label">Total Paid</div><div class="value" data-stat="total_paid">{{ stats.total_paid|money }}</div></div>
+  <div class="kpi"><div class="label">Outstanding</div><div class="value" data-stat="outstanding">{{ stats.outstanding|money }}</div></div>
+</div>
+
+{% if not loans %}
+<div class="card pad empty">
+  <i data-lucide="inbox"></i>
+  <h3>No loans yet</h3>
+  <p>Add your first loan to start tracking amortization, payments and forecasts.</p>
+  <div style="margin-top:14px"><a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add your first loan</a></div>
+</div>
+{% else %}
+
+<div class="grid grid-3" style="margin-bottom:16px">
+  <div class="card pad">
+    <h3 style="margin-bottom:14px">Portfolio Health</h3>
+    <div class="health">
+      <div class="ring" style="--p: {{ stats.health }}%"><div class="num">{{ stats.health }}</div></div>
+      <div>
+        <div style="font-size:13px;color:var(--slate-500)">Composite score</div>
+        <div style="font-weight:600;color:var(--slate-800);margin-top:4px">{{ 'Excellent' if stats.health>=80 else ('Good' if stats.health>=60 else 'Needs attention') }}</div>
+        <div style="font-size:12px;color:var(--slate-500);margin-top:10px;max-width:200px">Based on completion, payment consistency, overdue & balloon exposure.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card pad" style="grid-column: span 2">
+    <h3 style="margin-bottom:10px">Smart Insights</h3>
+    {% for ins in charts.insights %}
+      <div class="insight"><i data-lucide="sparkles"></i> {{ ins }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header"><h3>Loan Distribution</h3><span style="font-size:12px;color:var(--slate-500)">By bank</span></div>
+    <div class="card-body"><canvas id="distChart" height="180"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Cash Flow Projection</h3><span style="font-size:12px;color:var(--slate-500)">Next 12 months</span></div>
+    <div class="card-body"><canvas id="cashChart" height="180"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header"><h3>Debt Reduction Trend</h3></div>
+    <div class="card-body"><canvas id="debtChart" height="180"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Interest Burden</h3></div>
+    <div class="card-body"><canvas id="burdenChart" height="180"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Balloon Risk</h3></div>
+    <div class="card-body">
+      {% if charts.balloon %}
+      <table class="tbl">
+        <thead><tr><th>Loan</th><th>Due</th><th class="num">Days</th><th class="num">Amount</th><th>Risk</th></tr></thead>
+        <tbody>
+        {% for b in charts.balloon %}
+          <tr><td><strong>{{ b.loan_id }}</strong><br><span style="color:var(--slate-500);font-size:12px">{{ b.loan_name }}</span></td>
+              <td>{{ b.due }}</td><td class="num">{{ b.days }}</td><td class="num">{{ b.amount|money }}</td>
+              <td><span class="badge {{ 'Overdue' if b.risk=='High' else ('Pending' if b.risk=='Medium' else 'Active') }}">{{ b.risk }}</span></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty"><i data-lucide="shield-check"></i><p>No upcoming balloon payments.</p></div>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Completion Forecast</h3></div>
+    <div class="card-body">
+      {% if charts.forecast %}
+      <table class="tbl">
+        <thead><tr><th>Loan</th><th>Projected closure</th></tr></thead>
+        <tbody>{% for f in charts.forecast %}<tr><td>{{ f.loan }}</td><td>{{ f.closes }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% else %}<div class="empty"><i data-lucide="flag"></i><p>No active loans to forecast.</p></div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<script id="charts-data" type="application/json">{{ charts|tojson }}</script>
+<script>
+window.__dashboard = (function(){
+  const ctx = id => document.getElementById(id);
+  let dist, cash, debt, burden;
+  function build(data){
+    const palette = ['#1D4ED8','#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
+    const bankLabels = Object.keys(data.by_bank);
+    const bankValues = Object.values(data.by_bank);
+    if (dist) dist.destroy();
+    dist = new Chart(ctx('distChart'), {type:'doughnut',
+      data:{labels:bankLabels,datasets:[{data:bankValues,backgroundColor:palette,borderWidth:0}]},
+      options:{plugins:{legend:{position:'right'}},cutout:'62%'}});
+
+    if (cash) cash.destroy();
+    cash = new Chart(ctx('cashChart'), {type:'line',
+      data:{labels:data.cashflow.map(c=>c.month),datasets:[{label:'EMI Due',data:data.cashflow.map(c=>c.amount),
+        borderColor:'#1D4ED8',backgroundColor:'rgba(29,78,216,.10)',tension:.35,fill:true,pointRadius:3}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+
+    if (debt) debt.destroy();
+    debt = new Chart(ctx('debtChart'), {type:'line',
+      data:{labels:data.debt_trend.map(c=>c.month),datasets:[{label:'Remaining',data:data.debt_trend.map(c=>c.remaining),
+        borderColor:'#10B981',backgroundColor:'rgba(16,185,129,.18)',tension:.35,fill:true,pointRadius:3}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+
+    if (burden) burden.destroy();
+    burden = new Chart(ctx('burdenChart'), {type:'bar',
+      data:{labels:['Principal Remaining','Interest Remaining','Interest Saved'],
+        datasets:[{data:[data.interest_burden.principal_remaining,data.interest_burden.interest_remaining,data.interest_burden.interest_saved],
+          backgroundColor:['#1D4ED8','#F59E0B','#10B981'],borderRadius:8,barThickness:36}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  }
+  function update(payload){
+    Object.entries(payload.stats).forEach(([k,v])=>{
+      const el = document.querySelector(`[data-stat="${k}"]`);
+      if (el) el.textContent = typeof v === 'number' && k!=='health' && k!=='active' && k!=='completed' && k!=='closed_this_month'
+        ? v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : v;
+    });
+    build(payload.charts);
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    const data = JSON.parse(document.getElementById('charts-data').textContent);
+    setTimeout(()=>build(data), 50);
+  });
+  return {update};
+})();
+</script>
+{% endif %}
+{% endblock %}

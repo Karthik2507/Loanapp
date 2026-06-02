@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Sign in · LoanLedger{% endblock %}
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-form">
+    <div class="inner">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
+        <div class="brand-mark" style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--blue-600),var(--blue-900));display:flex;align-items:center;justify-content:center;color:#fff"><i data-lucide="layers"></i></div>
+        <div style="font-weight:700;font-size:18px">LoanLedger</div>
+      </div>
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to manage your loans, schedules and reports.</p>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="form-row">
+          <label>Username or Email</label>
+          {{ form.identifier(placeholder="you@example.com") }}
+          {% for e in form.identifier.errors %}<div class="err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="form-row">
+          <label>Password</label>
+          {{ form.password(placeholder="••••••••") }}
+          {% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="form-row" style="flex-direction:row;align-items:center;gap:8px">
+          {{ form.remember() }} <label style="margin:0">Remember me</label>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center" type="submit">Sign in</button>
+      </form>
+      <p style="margin-top:18px;color:var(--slate-500);font-size:13px">No account? <a href="{{ url_for('auth.register') }}">Create one</a></p>
+    </div>
+  </div>
+  <div class="auth-side">
+    <div>
+      <h2>Modern loan management for everyone.</h2>
+      <p>Track amortization schedules, model balloon payments, simulate early payoffs, and forecast cash flow — all in one beautifully simple workspace.</p>
+      <ul>
+        <li><i data-lucide="check-circle-2"></i> Bank-grade calculations</li>
+        <li><i data-lucide="check-circle-2"></i> Immutable history & audit trail</li>
+        <li><i data-lucide="check-circle-2"></i> Executive dashboards in seconds</li>
+        <li><i data-lucide="check-circle-2"></i> PDF / CSV exports</li>
+      </ul>
+    </div>
+    <!-- <div style="opacity:.7;font-size:13px">© LoanLedger · Built with Flask</div> -->
+    <div style="opacity:.7;font-size:13px">© LoanLedger 2026</div>
+  </div>
+</div>
+{% endblock %}

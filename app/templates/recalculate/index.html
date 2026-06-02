@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Recalculate · LoanLedger{% endblock %}
+{% block crumbs %}<strong>Recalculate</strong>{% endblock %}
+{% block content %}
+<div class="page-header"><div class="title-block"><h1>Recalculation Engine</h1><div class="sub">Affects only unpaid installments. Paid history is immutable.</div></div>
+<div class="actions"><a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a></div></div>
+
+{% if not loans %}
+<div class="card pad empty"><i data-lucide="calculator"></i><h3>Add a loan first</h3></div>
+{% else %}
+
+<div class="card" style="margin-bottom:16px"><div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <strong>Loan:</strong>
+  <select onchange="location.href=this.value+'?loan_pk='+this.value.split('=').pop()" style="padding:8px 12px;border:1px solid var(--slate-200);border-radius:10px">
+    {% for l in loans %}
+      <option value="{{ url_for('recalc.index') }}?loan_pk={{ l.id }}" {% if loan and l.id==loan.id %}selected{% endif %}>{{ l.loan_id }} — {{ l.loan_name }}</option>
+    {% endfor %}
+  </select>
+</div></div>
+
+{% if loan %}
+<div class="grid grid-2">
+  <div class="card pad">
+    <h3 style="margin-bottom:10px">Apply Recalculation</h3>
+    <form method="post" action="{{ url_for('recalc.index') }}?loan_pk={{ loan.id }}">
+      {{ form.hidden_tag() }}
+      <div class="form-row"><label>Type</label>{{ form.recalc_type() }}</div>
+      <div class="form-grid">
+        <div class="form-row"><label>New Rate (%)</label>{{ form.new_rate() }}</div>
+        <div class="form-row"><label>New Tenure (months)</label>{{ form.new_tenure() }}</div>
+        <div class="form-row"><label>Extra / Lump-Sum Amount</label>{{ form.extra_amount() }}</div>
+        <div class="form-row"><label>Effective Date</label>{{ form.effective_date() }}</div>
+      </div>
+      <button class="btn" type="submit"><i data-lucide="calculator"></i> Recalculate</button>
+    </form>
+  </div>
+  <div class="card pad">
+    <h3 style="margin-bottom:10px">Current State</h3>
+    <table class="tbl">
+      <tr><td>Loan</td><td>{{ loan.loan_id }} — {{ loan.loan_name }}</td></tr>
+      <tr><td>Rate</td><td>{{ '%.2f'|format(loan.interest_rate) }}%</td></tr>
+      <tr><td>Tenure</td><td>{{ loan.tenure_months }} months</td></tr>
+      <tr><td>Remaining</td><td>{{ loan.remaining_balance|money }}</td></tr>
+      <tr><td>Completion</td><td>{{ '%.0f'|format(loan.completion_percentage) }}%</td></tr>
+    </table>
+    {% if simulation %}
+    <div class="insight" style="margin-top:14px"><i data-lucide="zap"></i> Early payoff today: {{ simulation.payoff_today|money }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

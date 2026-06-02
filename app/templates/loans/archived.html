@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Archived Loans{% endblock %}
+{% block crumbs %}<a href="{{ url_for('loans.list_loans') }}">Loans</a> / <strong>Archived</strong>{% endblock %}
+{% block content %}
+<div class="page-header"><div class="title-block"><h1>Archived Loans</h1><div class="sub">Soft-deleted loans (data preserved).</div></div></div>
+<div class="card"><div class="table-wrap">
+{% if items %}
+<table class="tbl">
+  <thead><tr><th>Loan ID</th><th>Name</th><th>Bank</th><th class="num">Amount</th><th></th></tr></thead>
+  <tbody>
+  {% for l in items %}
+    <tr>
+      <td><strong>{{ l.loan_id }}</strong></td><td>{{ l.loan_name }}</td>
+      <td>{{ l.bank_name }}</td><td class="num">{{ l.loan_amount|money }}</td>
+      <td style="text-align:right">
+        <form method="post" action="{{ url_for('loans.restore', loan_pk=l.id) }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn secondary sm"><i data-lucide="rotate-ccw"></i> Restore</button>
+        </form>
+        <form method="post" action="{{ url_for('loans.delete', loan_pk=l.id) }}" style="display:inline" data-confirm="Permanently delete {{ l.loan_id }}? This cannot be undone.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn danger sm"><i data-lucide="trash-2"></i> Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty"><i data-lucide="archive"></i><p>No archived loans.</p></div>{% endif %}
+</div></div>
+{% endblock %}

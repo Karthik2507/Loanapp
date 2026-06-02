@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if mode=='edit' else 'Add' }} Loan{% endblock %}
+{% block crumbs %}<a href="{{ url_for('loans.list_loans') }}">Loans</a> / <strong>{{ 'Edit' if mode=='edit' else 'Add' }}</strong>{% endblock %}
+{% block content %}
+<div class="page-header"><div class="title-block">
+  <h1>{{ 'Edit Loan' if mode=='edit' else 'Add a New Loan' }}</h1>
+  <div class="sub">{% if mode=='edit' %}Editing metadata only — financial fields are immutable. Use Recalculate to change rates/tenure.{% else %}The amortization schedule is generated once on creation and stored permanently.{% endif %}</div>
+</div></div>
+<div class="card pad">
+  <form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-grid">
+      <div class="form-row"><label>Loan ID (unique)</label>{{ form.loan_id(placeholder="HOME001") }}{% for e in form.loan_id.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+      <div class="form-row"><label>Loan Name</label>{{ form.loan_name(placeholder="Home Loan — Apartment") }}{% for e in form.loan_name.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+      <div class="form-row"><label>Category</label>{{ form.loan_category() }}</div>
+      <div class="form-row"><label>Bank / Lender</label>{{ form.bank_name() }}</div>
+      <div class="form-row"><label>Loan Amount</label>{{ form.loan_amount() }}{% for e in form.loan_amount.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+      <div class="form-row"><label>Annual Interest Rate (%)</label>{{ form.interest_rate() }}{% for e in form.interest_rate.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+      <div class="form-row"><label>Down Payment</label>{{ form.down_payment() }}</div>
+      <div class="form-row"><label>Tenure (months)</label>{{ form.tenure_months() }}</div>
+      <div class="form-row"><label>Start Date</label>{{ form.start_date() }}</div>
+      <div class="form-row"><label>Balloon Date (optional)</label>{{ form.balloon_date() }}</div>
+      <div class="form-row"><label>Balloon Amount (optional)</label>{{ form.balloon_amount() }}</div>
+    </div>
+    <div class="form-row"><label>Notes</label>{{ form.notes(rows=3) }}</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn" type="submit">{{ 'Save Changes' if mode=='edit' else 'Create Loan' }}</button>
+      <a href="{{ url_for('loans.list_loans') }}" class="btn secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

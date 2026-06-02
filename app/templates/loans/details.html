@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ loan.loan_id }} · {{ loan.loan_name }}{% endblock %}
+{% block crumbs %}<a href="{{ url_for('loans.list_loans') }}">Loans</a> / <strong>{{ loan.loan_id }}</strong>{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="title-block">
+    <h1>{{ loan.loan_name }} <span class="badge {{ loan.loan_status.replace(' ','') }}" style="margin-left:8px;font-size:11px">{{ loan.loan_status }}</span></h1>
+    <div class="sub">{{ loan.bank_name }} · {{ loan.loan_category }} · ID {{ loan.loan_id }}</div>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('schedule.view', loan_pk=loan.id) }}" class="btn secondary"><i data-lucide="calendar-days"></i> Schedule</a>
+    <a href="{{ url_for('recalc.index', loan_pk=loan.id) }}" class="btn secondary"><i data-lucide="calculator"></i> Recalculate</a>
+    <a href="{{ url_for('loans.edit', loan_pk=loan.id) }}" class="btn secondary"><i data-lucide="edit-3"></i> Edit</a>
+    <form method="post" action="{{ url_for('loans.archive', loan_pk=loan.id) }}" style="display:inline" data-confirm="Archive this loan?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn secondary"><i data-lucide="archive"></i> Archive</button>
+    </form>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">Loan Amount</div><div class="value">{{ loan.loan_amount|money }}</div></div>
+  <div class="kpi"><div class="label">Interest Rate</div><div class="value">{{ '%.2f'|format(loan.interest_rate) }}%</div></div>
+  <div class="kpi"><div class="label">Tenure</div><div class="value">{{ loan.tenure_months }} mo</div></div>
+  <div class="kpi"><div class="label">Down Payment</div><div class="value">{{ loan.down_payment|money }}</div></div>
+  <div class="kpi"><div class="label">Remaining</div><div class="value">{{ loan.remaining_balance|money }}</div></div>
+  <div class="kpi"><div class="label">Completion</div><div class="value">{{ '%.0f'|format(loan.completion_percentage) }}%</div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Overview</h3></div>
+    <div class="card-body">
+      <table class="tbl">
+        <tr><td>Start Date</td><td>{{ loan.start_date|fdate }}</td></tr>
+        <tr><td>Created</td><td>{{ loan.created_at|fdate }}</td></tr>
+        {% if loan.balloon_date %}<tr><td>Balloon Date</td><td>{{ loan.balloon_date|fdate }}</td></tr>{% endif %}
+        {% if loan.balloon_amount %}<tr><td>Balloon Amount</td><td>{{ loan.balloon_amount|money }}</td></tr>{% endif %}
+        {% if loan.closed_at %}<tr><td>Closed</td><td>{{ loan.closed_at|fdate }}</td></tr>{% endif %}
+        {% if loan.notes %}<tr><td>Notes</td><td>{{ loan.notes }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Closure</h3>
+      <span style="font-size:12px;color:var(--slate-500)">{{ 'Eligible' if loan.remaining_balance <= 0.01 else 'Not eligible yet' }}</span>
+    </div>
+    <div class="card-body">
+      {% if loan.remaining_balance <= 0.01 and loan.loan_status != 'Completed' %}
+        <div class="insight"><i data-lucide="check-circle-2"></i> This loan is eligible for closure</div>
+        <form method="post" action="{{ url_for('loans.close', loan_pk=loan.id) }}" data-confirm="Are you sure you want to close this loan?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn success"><i data-lucide="check-circle-2"></i> Close Loan</button>
+        </form>
+      {% elif loan.loan_status == 'Completed' %}
+        <div class="insight"><i data-lucide="check-circle-2"></i> Loan closed on {{ loan.closed_at|fdate }}. Final amount: {{ loan.final_amount|money }}</div>
+        {% if loan.closure_notes %}<p style="color:var(--slate-500);font-size:13px;margin-top:8px">{{ loan.closure_notes }}</p>{% endif %}
+      {% else %}
+        <p style="color:var(--slate-500)">Closure becomes available once all installments are paid and the remaining balance reaches zero (including any balloon payment).</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

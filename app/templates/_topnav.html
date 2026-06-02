@@ -1,0 +1,26 @@
+<header class="topnav">
+  <button class="menu-toggle"><i data-lucide="menu"></i></button>
+  <div class="crumbs">
+    {% block crumbs %}<strong>Dashboard</strong>{% endblock %}
+  </div>
+  <div class="spacer"></div>
+  <div class="date"><i data-lucide="calendar"></i> {{ now.strftime('%a, %d %b %Y') }}</div>
+  {% if request.endpoint and not request.endpoint.startswith('settings.') %}
+    <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a>
+  {% endif %}
+  <div class="profile">
+    <button class="profile-btn">
+      <div class="avatar">{{ current_user.full_name[:1]|upper }}</div>
+      <div style="text-align:left;line-height:1.2">
+        <div style="font-weight:600;font-size:13px;color:var(--slate-900)">{{ current_user.full_name }}</div>
+        <div style="font-size:11px;color:var(--slate-500)">@{{ current_user.username }}</div>
+      </div>
+      <i data-lucide="chevron-down" style="width:16px;height:16px"></i>
+    </button>
+    <div class="dropdown">
+      <a href="{{ url_for('settings.index') }}"><i data-lucide="user"></i> Profile & Settings</a>
+      <a href="{{ url_for('reports.index') }}"><i data-lucide="file-bar-chart-2"></i> Reports</a>
+      <a href="{{ url_for('auth.logout') }}" style="color:var(--danger)"><i data-lucide="log-out"></i> Logout</a>
+    </div>
+  </div>
+</header>

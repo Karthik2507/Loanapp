@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Settings · LoanLedger{% endblock %}
+{% block crumbs %}<strong>Settings</strong>{% endblock %}
+{% block content %}
+<div class="page-header"><div class="title-block"><h1>Settings</h1><div class="sub">Manage your profile, security and preferences.</div></div></div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Profile</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('settings.update_profile') }}">
+        {{ profile_form.hidden_tag() }}
+        <div class="form-row"><label>Full Name</label>{{ profile_form.full_name() }}</div>
+        <div class="form-row"><label>Username</label>{{ profile_form.username() }}</div>
+        <div class="form-row"><label>Email</label>{{ profile_form.email() }}</div>
+        <button class="btn">Save profile</button>
+      </form>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Preferences</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('settings.update_preferences') }}">
+        {{ pref_form.hidden_tag() }}
+        <div class="form-row"><label>Currency</label>{{ pref_form.preferred_currency() }}</div>
+        <div class="form-row"><label>Date format</label>{{ pref_form.preferred_date_format() }}</div>
+        <button class="btn">Save preferences</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;max-width:560px">
+  <div class="card-header"><h3>Change Password</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('settings.change_password') }}">
+      {{ pwd_form.hidden_tag() }}
+      <div class="form-row"><label>Current password</label>{{ pwd_form.current_password() }}</div>
+      <div class="form-row"><label>New password</label>{{ pwd_form.new_password() }}</div>
+      <div class="form-row"><label>Confirm new password</label>{{ pwd_form.confirm() }}</div>
+      <button class="btn">Change password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

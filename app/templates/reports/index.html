@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Reports · LoanLedger{% endblock %}
+{% block crumbs %}<strong>Reports</strong>{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="title-block"><h1>Reports</h1><div class="sub">Portfolio-wide summaries and exports.</div></div>
+  <div class="actions">
+    <a href="{{ url_for('reports.export_csv') }}" class="btn secondary"><i data-lucide="file-down"></i> CSV</a>
+    <a href="{{ url_for('reports.export_pdf') }}" class="btn secondary"><i data-lucide="file-text"></i> PDF</a>
+    <a href="{{ url_for('reports.print_view') }}" class="btn secondary" target="_blank"><i data-lucide="printer"></i> Print</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">Total Borrowed</div><div class="value">{{ total_borrowed|money }}</div></div>
+  <div class="kpi"><div class="label">Total Interest</div><div class="value">{{ total_interest|money }}</div></div>
+  <div class="kpi"><div class="label">Remaining Balance</div><div class="value">{{ total_remaining|money }}</div></div>
+  <div class="kpi"><div class="label">Loans</div><div class="value">{{ loans|length }}</div></div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header"><h3>Loan Summary</h3></div>
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Name</th><th>Bank</th><th>Status</th><th class="num">Amount</th><th class="num">Rate</th><th class="num">Remaining</th><th class="num">Completion</th></tr></thead>
+      <tbody>{% for l in loans %}
+        <tr><td><strong>{{ l.loan_id }}</strong></td><td>{{ l.loan_name }}</td><td>{{ l.bank_name }}</td>
+            <td><span class="badge {{ l.loan_status.replace(' ','') }}">{{ l.loan_status }}</span></td>
+            <td class="num">{{ l.loan_amount|money }}</td><td class="num">{{ '%.2f'|format(l.interest_rate) }}%</td>
+            <td class="num">{{ l.remaining_balance|money }}</td><td class="num">{{ '%.0f'|format(l.completion_percentage) }}%</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header"><h3>Balloon Report</h3></div>
+    <div class="card-body">
+      {% if balloons %}
+      <table class="tbl"><thead><tr><th>Loan</th><th>Date</th><th class="num">Amount</th></tr></thead>
+      <tbody>{% for l in balloons %}<tr><td>{{ l.loan_id }}</td><td>{{ l.balloon_date|fdate }}</td><td class="num">{{ l.balloon_amount|money }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<div class="empty"><i data-lucide="shield-check"></i><p>No balloon loans.</p></div>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Closures</h3></div>
+    <div class="card-body">
+      {% if closures %}
+      <table class="tbl"><thead><tr><th>Loan</th><th>Closed</th><th class="num">Final</th></tr></thead>
+      <tbody>{% for l in closures %}<tr><td>{{ l.loan_id }}</td><td>{{ l.closed_at|fdate }}</td><td class="num">{{ l.final_amount|money }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<div class="empty"><i data-lucide="check"></i><p>No closed loans yet.</p></div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

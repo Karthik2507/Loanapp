@@ -1,0 +1,23 @@
+{% set ep = request.endpoint or '' %}
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark"><i data-lucide="layers"></i></div>
+    <div>
+      <div class="brand-name">LoanLedger</div>
+      <div class="brand-sub">Fintech Suite</div>
+    </div>
+  </div>
+  <nav>
+    <div class="group-label">Workspace</div>
+    <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if ep.startswith('dashboard.') else '' }}"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a href="{{ url_for('loans.list_loans') }}" class="{{ 'active' if ep.startswith('loans.') else '' }}"><i data-lucide="wallet"></i> Loans</a>
+    <a href="{{ url_for('schedule.index') }}" class="{{ 'active' if ep.startswith('schedule.') else '' }}"><i data-lucide="calendar-days"></i> Schedule</a>
+    <a href="{{ url_for('recalc.index') }}" class="{{ 'active' if ep.startswith('recalc.') else '' }}"><i data-lucide="calculator"></i> Recalculate</a>
+    <a href="{{ url_for('reports.index') }}" class="{{ 'active' if ep.startswith('reports.') else '' }}"><i data-lucide="file-bar-chart-2"></i> Reports</a>
+    <div class="group-label">Account</div>
+    <a href="{{ url_for('settings.index') }}" class="{{ 'active' if ep.startswith('settings.') else '' }}"><i data-lucide="settings"></i> Settings</a>
+  </nav>
+  <div class="logout-area">
+    <a href="{{ url_for('auth.logout') }}"><i data-lucide="log-out"></i> Logout</a>
+  </div>
+</aside>

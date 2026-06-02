@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Not Found · LoanLedger{% endblock %}
+{% block auth_content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--slate-50)">
+  <div style="text-align:center;padding:40px">
+    <div style="font-size:80px;font-weight:800;color:var(--blue-700);letter-spacing:-.04em">404</div>
+    <h2 style="margin:10px 0">Page not found</h2>
+    <p style="color:var(--slate-500);margin-bottom:18px">The page you're looking for doesn't exist or has moved.</p>
+    <a href="{{ url_for('dashboard.index') if current_user.is_authenticated else url_for('auth.login') }}" class="btn"><i data-lucide="home"></i> Go home</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div style="text-align:center;padding:80px 20px">
+  <div style="font-size:80px;font-weight:800;color:var(--blue-700);letter-spacing:-.04em">404</div>
+  <h2 style="margin:10px 0">Page not found</h2>
+  <p style="color:var(--slate-500);margin-bottom:18px">The page you're looking for doesn't exist.</p>
+  <a href="{{ url_for('dashboard.index') }}" class="btn"><i data-lucide="home"></i> Go to dashboard</a>
+</div>
+{% endblock %}

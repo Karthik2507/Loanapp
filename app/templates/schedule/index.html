@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Schedule · LoanLedger{% endblock %}
+{% block crumbs %}<strong>Schedule</strong>{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="title-block">
+    <h1>Amortization Schedule</h1>
+    <div class="sub">Generated once on loan creation — stored permanently.</div>
+  </div>
+
+  <div class="actions">
+    {% if loan %}
+      <a href="{{ url_for('recalc.index', loan_pk=loan.id) }}" class="btn secondary">
+        <i data-lucide="calculator"></i> Recalculate
+      </a>
+    {% endif %}
+    <a href="{{ url_for('loans.add') }}" class="btn">
+      <i data-lucide="plus"></i> Add Loan
+    </a>
+  </div>
+</div>
+
+{# ================= NO LOANS STATE ================= #}
+{% if not loans %}
+
+  <div class="card pad empty">
+    <i data-lucide="calendar-x"></i>
+    <h3>No loans yet</h3>
+    <p>Create a loan to view its schedule.</p>
+  </div>
+
+{% else %}
+
+  {# ================= LOAN SELECTOR ================= #}
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong>Select loan:</strong>
+
+      <select onchange="location.href=this.value"
+        style="padding:8px 12px;border:1px solid var(--slate-200);border-radius:10px">
+
+        {% for l in loans %}
+          <option value="{{ url_for('schedule.view', loan_pk=l.id) }}"
+            {% if loan and l.id == loan.id %}selected{% endif %}>
+            {{ l.loan_id }} — {{ l.loan_name }}
+          </option>
+        {% endfor %}
+
+      </select>
+    </div>
+  </div>
+
+  {# ================= MAIN LOAN VIEW ================= #}
+  {% if loan %}
+
+    <div class="grid grid-2" style="margin-bottom:16px">
+
+      <div class="card pad">
+        <h3 style="margin-bottom:6px">{{ loan.loan_name }}</h3>
+
+        <div style="color:var(--slate-500);font-size:13px">
+          {{ loan.bank_name }} · Rate {{ '%.2f'|format(loan.interest_rate) }}%
+          · Tenure {{ loan.tenure_months }} mo
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="progress">
+            <div class="progress-bar" style="width: {{ loan.completion_percentage }}%"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-500);margin-top:6px">
+            <span>{{ '%.0f'|format(loan.completion_percentage) }}% complete</span>
+            <span>Remaining {{ loan.remaining_balance|money }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <h3 style="margin-bottom:10px">Apply Interest Rate Revision</h3>
+
+        <form method="post" action="{{ url_for('schedule.revise_interest', loan_pk=loan.id) }}">
+          {{ revision_form.hidden_tag() }}
+
+          <div class="form-grid">
+            <div class="form-row">
+              <label>New Rate (%)</label>
+              {{ revision_form.new_rate() }}
+            </div>
+
+            <div class="form-row">
+              <label>Effective Date</label>
+              {{ revision_form.effective_date() }}
+            </div>
+          </div>
+
+          <button class="btn">
+            <i data-lucide="trending-up"></i>
+            Apply to remaining installments
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    {# ================= INSTALLMENTS TABLE ================= #}
+    <div class="card">
+      <div class="card-header">
+        <h3>Installments</h3>
+        <span style="font-size:12px;color:var(--slate-500)">
+          {{ loan.schedules.count() }} total
+        </span>
+      </div>
+
+      <div class="table-wrap" style="max-height:640px;overflow-y:auto">
+        <table class="tbl">
+
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date</th>
+              <th class="num">EMI</th>
+              <th class="num">Principal</th>
+              <th class="num">Interest</th>
+              <th class="num">Balance</th>
+              <th>Status</th>
+              <th>Paid Date</th>
+              <th>Flags</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for s in loan.schedules %}
+            <tr>
+              <td><strong>{{ s.month_index }}</strong></td>
+              <td>{{ s.payment_date|fdate }}</td>
+              <td class="num">{{ s.emi|money }}</td>
+              <td class="num">{{ s.principal|money }}</td>
+              <td class="num">{{ s.interest|money }}</td>
+              <td class="num">{{ s.remaining_balance|money }}</td>
+
+              <td data-status>
+                <span class="badge {{ s.payment_status }}">{{ s.payment_status }}</span>
+              </td>
+
+              <td>
+                {{ s.paid_date|fdate if s.paid_date else '—' }}
+              </td>
+
+              <td>
+                {% if s.is_balloon %}
+                  <span class="badge Balloon">Balloon</span>
+                {% endif %}
+                {% if s.is_revised %}
+                  <span class="badge Pending">Revised</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if s.payment_status == 'Paid' %}
+                  <form method="post"
+                        action="{{ url_for('schedule.undo_paid', loan_pk=loan.id, schedule_id=s.id) }}"
+                        data-ajax="payment"
+                        data-schedule-id="{{ s.id }}"
+                        data-kind="undo"
+                        style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn ghost sm">
+                      <i data-lucide="rotate-ccw"></i>
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="post"
+                        action="{{ url_for('schedule.mark_paid', loan_pk=loan.id, schedule_id=s.id) }}"
+                        data-ajax="payment"
+                        data-schedule-id="{{ s.id }}"
+                        data-kind="paid"
+                        style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn success sm">
+                      <i data-lucide="check"></i> Mark paid
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+
+            </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+    </div>
+
+    {# ================= CLOSE LOAN SECTION ================= #}
+    {% if loan.remaining_balance <= 0.01 and loan.loan_status != 'Completed' %}
+      <div class="card" style="margin-top:16px">
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+
+          <div class="insight" style="margin:0">
+            <i data-lucide="check-circle-2"></i>
+            This loan is eligible for closure
+          </div>
+
+          <form method="post"
+                action="{{ url_for('loans.close', loan_pk=loan.id) }}"
+                data-confirm="Are you sure you want to close this loan?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn success">
+              <i data-lucide="check-circle-2"></i> Close Loan
+            </button>
+          </form>
+
+        </div>
+      </div>
+    {% endif %}
+
+    {# ================= COMPLETED LOAN ================= #}
+    {% if loan.loan_status == 'Completed' %}
+      <div class="card" style="margin-top:16px">
+        <div class="card-body">
+          <div class="insight">
+            <i data-lucide="check-circle-2"></i>
+            Loan closed on {{ loan.closed_at|fdate }}.
+            Final amount: {{ loan.final_amount|money }}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+  {% endif %} {# loan #}
+
+{% endif %} {# loans #}
+
+{% endblock %}

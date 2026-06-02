@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Loans · LoanLedger{% endblock %}
+{% block crumbs %}<a href="{{ url_for('dashboard.index') }}">Dashboard</a> / <strong>Loans</strong>{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="title-block"><h1>Loans</h1><div class="sub">All your active and pending loans.</div></div>
+  <div class="actions">
+    <a href="{{ url_for('loans.archived') }}" class="btn secondary"><i data-lucide="archive"></i> Archived</a>
+    <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a>
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by ID, name, bank…">
+  <select name="status">
+    <option value="">All statuses</option>
+    {% for s in ['Active','Completed','Overdue','Balloon Pending'] %}
+      <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn secondary sm" type="submit"><i data-lucide="filter"></i> Apply</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+  {% if pagination.items %}
+    <table class="tbl">
+      <thead><tr>
+        <th>Loan ID</th><th>Name</th><th>Bank</th><th>Category</th>
+        <th class="num">Amount</th><th class="num">Rate</th><th class="num">Remaining</th>
+        <th>Progress</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for l in pagination.items %}
+        <tr>
+          <td><strong>{{ l.loan_id }}</strong></td>
+          <td><a href="{{ url_for('loans.details', loan_pk=l.id) }}">{{ l.loan_name }}</a></td>
+          <td>{{ l.bank_name }}</td>
+          <td>{{ l.loan_category }}</td>
+          <td class="num">{{ l.loan_amount|money }}</td>
+          <td class="num">{{ '%.2f'|format(l.interest_rate) }}%</td>
+          <td class="num">{{ l.remaining_balance|money }}</td>
+          <td style="min-width:120px">
+            <div class="progress"><div class="progress-bar" style="width: {{ l.completion_percentage }}%"></div></div>
+            <div style="font-size:11px;color:var(--slate-500);margin-top:4px">{{ '%.0f'|format(l.completion_percentage) }}%</div>
+          </td>
+          <td><span class="badge {{ l.loan_status.replace(' ','') }}">{{ l.loan_status }}</span></td>
+          <td>
+            <a href="{{ url_for('loans.details', loan_pk=l.id) }}" class="btn ghost sm"><i data-lucide="eye"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty"><i data-lucide="inbox"></i><h3>No loans match</h3><p>Try clearing filters or add a new loan.</p></div>
+  {% endif %}
+  </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pager">
+  {% for p in pagination.iter_pages() %}
+    {% if p %}
+      {% if p == pagination.page %}<span class="current">{{ p }}</span>
+      {% else %}<a href="?page={{ p }}&q={{ q }}&status={{ status }}">{{ p }}</a>{% endif %}
+    {% else %}<span>…</span>{% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

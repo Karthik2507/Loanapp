@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Create account · LoanLedger{% endblock %}
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="auth-form">
+    <div class="inner">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
+        <div class="brand-mark" style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--blue-600),var(--blue-900));display:flex;align-items:center;justify-content:center;color:#fff"><i data-lucide="layers"></i></div>
+        <div style="font-weight:700;font-size:18px">LoanLedger</div>
+      </div>
+      <h1>Create your account</h1>
+      <p class="sub">Start managing loans in under a minute.</p>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="form-row"><label>Full Name</label>{{ form.full_name() }}{% for e in form.full_name.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Username</label>{{ form.username() }}{% for e in form.username.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+          <div class="form-row"><label>Email</label>{{ form.email() }}{% for e in form.email.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>Password</label>{{ form.password() }}{% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+          <div class="form-row"><label>Confirm</label>{{ form.confirm() }}{% for e in form.confirm.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center" type="submit">Create account</button>
+      </form>
+      <p style="margin-top:18px;color:var(--slate-500);font-size:13px">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+    </div>
+  </div>
+  <div class="auth-side">
+    <div>
+      <h2>One workspace. Every loan. Total clarity.</h2>
+      <p>Designed for individuals and families to bring discipline and visibility to debt management.</p>
+    </div>
+    <div style="opacity:.7;font-size:13px">© LoanLedger 2026</div>
+    <!-- <div style="opacity:.7;font-size:13px">© LoanLedger</div> -->
+  </div>
+</div>
+{% endblock %}
