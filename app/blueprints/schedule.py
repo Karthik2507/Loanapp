@@ -106,3 +106,48 @@ def revise_interest(loan_pk):
     db.session.commit()
     flash("Interest rate revised for remaining installments.", "success")
     return redirect(url_for("schedule.view", loan_pk=loan.id))
+
+
+@schedule_bp.route("/<int:loan_pk>/annual-summary/csv")
+@login_required
+def annual_summary_csv(loan_pk):
+    import csv
+    import io
+    from flask import Response
+    
+    loan = _get_loan(loan_pk)
+    schedules = loan.schedules.all()
+    
+    # Group by year
+    years_data = {}
+    for s in schedules:
+        year = s.payment_date.year
+        if year not in years_data:
+            years_data[year] = {"principal": 0.0, "interest": 0.0, "payment": 0.0}
+        years_data[year]["principal"] += s.principal
+        years_data[year]["interest"] += s.interest
+        years_data[year]["payment"] += s.emi
+        
+    output = io.StringIO()
+    w = csv.writer(output)
+    w.writerow(["Year", "Total Principal", "Total Interest", "Total Payment"])
+    
+    grand_principal = 0.0
+    grand_interest = 0.0
+    grand_payment = 0.0
+    
+    sorted_years = sorted(years_data.keys())
+    for y in sorted_years:
+        p = years_data[y]["principal"]
+        i = years_data[y]["interest"]
+        pay = years_data[y]["payment"]
+        w.writerow([y, f"{p:.2f}", f"{i:.2f}", f"{pay:.2f}"])
+        grand_principal += p
+        grand_interest += i
+        grand_payment += pay
+        
+    w.writerow(["Grand Total", f"{grand_principal:.2f}", f"{grand_interest:.2f}", f"{grand_payment:.2f}"])
+    
+    filename = f"annual_summary_{loan.loan_id}.csv"
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})

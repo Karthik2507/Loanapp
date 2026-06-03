@@ -15,6 +15,9 @@
       <a href="{{ url_for('recalc.index', loan_pk=loan.id) }}" class="btn secondary">
         <i data-lucide="calculator"></i> Recalculate
       </a>
+      <a href="{{ url_for('schedule.annual_summary_csv', loan_pk=loan.id) }}" class="btn secondary">
+        <i data-lucide="download"></i> Annual Summary
+      </a>
     {% endif %}
     <!-- <a href="{{ url_for('loans.add') }}" class="btn">
       <i data-lucide="plus"></i> Add Loan
