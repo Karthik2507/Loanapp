@@ -54,7 +54,21 @@
         {% endif %}
         <div class="form-row"><label>Annual Interest Rate (%)</label>{{ form.interest_rate() }}{% for e in form.interest_rate.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
         <div class="form-row"><label>Down Payment</label>{{ form.down_payment() }}</div>
-        <div class="form-row"><label>Tenure (months)</label>{{ form.tenure_months() }}</div>
+        {% if mode != 'edit' %}
+          <div class="form-row">
+            <label>Tenure</label>
+            <div style="display:flex;gap:10px">
+              {{ form.tenure_months(style="flex:1") }}
+              {{ form.tenure_unit(style="width:120px;padding:8px 12px;border:1px solid var(--slate-200);border-radius:10px") }}
+            </div>
+            {% for e in form.tenure_months.errors %}<div class="err">{{ e }}</div>{% endfor %}
+          </div>
+        {% else %}
+          <div class="form-row">
+            <label>Tenure (months)</label>
+            {{ form.tenure_months(disabled=True) }}
+          </div>
+        {% endif %}
         <div class="form-row"><label>Start Date</label>{{ form.start_date() }}</div>
         <div class="form-row"><label>Balloon Date (optional)</label>{{ form.balloon_date() }}</div>
         <div class="form-row"><label>Balloon Amount (optional)</label>{{ form.balloon_amount() }}</div>
@@ -117,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const formInputs = [
         'loan_amount', 'down_payment', 'custom_emi', 
-        'interest_rate', 'tenure_months', 'balloon_date', 
+        'interest_rate', 'tenure_months', 'tenure_unit', 'balloon_date', 
         'balloon_amount', 'start_date'
     ];
 
@@ -149,7 +163,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const customEmiEl = document.getElementById('custom_emi');
         const customEmi = customEmiEl ? parseFloat(customEmiEl.value || 0) : 0;
         const annualRate = parseFloat(document.getElementById('interest_rate').value || 0);
-        const months = parseInt(document.getElementById('tenure_months').value || 0);
+        const tenureUnitEl = document.getElementById('tenure_unit');
+        const tenureUnit = tenureUnitEl ? tenureUnitEl.value : 'months';
+        let months = parseInt(document.getElementById('tenure_months').value || 0);
+        if (tenureUnit === 'years') {
+            months = months * 12;
+        }
         const balloonDateEl = document.getElementById('balloon_date');
         const balloonAmountEl = document.getElementById('balloon_amount');
         const startDateEl = document.getElementById('start_date');
