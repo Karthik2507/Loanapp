@@ -32,11 +32,11 @@ def export_csv():
     output = io.StringIO()
     w = csv.writer(output)
     w.writerow(["Loan ID", "Name", "Category", "Bank", "Amount", "Rate %", "Tenure",
-                "Start", "Status", "Remaining", "Completion %", "Closed At"])
+                "Start", "Status", "Down Payment","Remaining", "Completion %", "Closed At"])
     for l in loans:
         w.writerow([l.loan_id, l.loan_name, l.loan_category, l.bank_name, f"{l.loan_amount:.2f}",
                     f"{l.interest_rate:.2f}", l.tenure_months, l.start_date.isoformat(),
-                    l.loan_status, f"{l.remaining_balance:.2f}", f"{l.completion_percentage:.2f}",
+                    l.loan_status, l.down_payment, f"{l.remaining_balance:.2f}", f"{l.completion_percentage:.2f}",
                     l.closed_at.isoformat() if l.closed_at else ""])
     return Response(output.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": "attachment; filename=loans.csv"})
@@ -51,11 +51,11 @@ def export_pdf():
     styles = getSampleStyleSheet()
     elems = [Paragraph("Loan Portfolio Report", styles["Title"]), Spacer(1, 12)]
     data = [["Loan ID", "Name", "Category", "Bank", "Amount", "Rate %", "Tenure",
-             "Status", "Remaining", "Completion %"]]
+             "Status", "Down Payment","Remaining", "Completion %"]]
     for l in loans:
         data.append([l.loan_id, l.loan_name, l.loan_category, l.bank_name,
                      f"{l.loan_amount:,.2f}", f"{l.interest_rate:.2f}", l.tenure_months,
-                     l.loan_status, f"{l.remaining_balance:,.2f}", f"{l.completion_percentage:.1f}%"])
+                     l.loan_status, l.down_payment, f"{l.remaining_balance:,.2f}", f"{l.completion_percentage:.1f}%"])
     t = Table(data, repeatRows=1)
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E40AF")),

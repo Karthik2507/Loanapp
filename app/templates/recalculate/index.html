@@ -3,7 +3,10 @@
 {% block crumbs %}<strong>Recalculate</strong>{% endblock %}
 {% block content %}
 <div class="page-header"><div class="title-block"><h1>Recalculation Engine</h1><div class="sub">Affects only unpaid installments. Paid history is immutable.</div></div>
-<div class="actions"><a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a></div></div>
+<!-- <div class="actions">
+  <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a>
+</div> -->
+</div>
 
 {% if not loans %}
 <div class="card pad empty"><i data-lucide="calculator"></i><h3>Add a loan first</h3></div>
