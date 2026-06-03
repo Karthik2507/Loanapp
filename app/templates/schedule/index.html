@@ -26,11 +26,12 @@
           <a href="{{ url_for('schedule.download_pdf', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--slate-700);font-size:13px">
             <i data-lucide="file" style="width:16px;height:16px"></i> Download PDF
           </a>
+          <a href="{{ url_for('schedule.annual_summary_csv', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--slate-700);font-size:13px">
+            <i data-lucide="download"></i> Annual Summary
+          </a>
         </div>
       </div>
-      <a href="{{ url_for('schedule.annual_summary_csv', loan_pk=loan.id) }}" class="btn secondary">
-        <i data-lucide="download"></i> Annual Summary
-      </a>
+      
     {% endif %}
     <!-- <a href="{{ url_for('loans.add') }}" class="btn">
       <i data-lucide="plus"></i> Add Loan

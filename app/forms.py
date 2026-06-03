@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, FloatField, IntegerField, DateField, SelectField, TextAreaField, SubmitField, BooleanField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, Regexp
+from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, Regexp, InputRequired
 
 
 CURRENCY_CHOICES = [("INR", "₹ INR"), ("USD", "$ USD"), ("EUR", "€ EUR"), ("GBP", "£ GBP"), ("JPY", "¥ JPY")]
@@ -31,7 +31,7 @@ class LoanForm(FlaskForm):
     loan_category = SelectField("Category", choices=CATEGORY_CHOICES, validators=[DataRequired()])
     bank_name = StringField("Bank / Lender", validators=[DataRequired(), Length(1, 120)])
     loan_amount = FloatField("Loan Amount", validators=[DataRequired(), NumberRange(min=0.01)])
-    interest_rate = FloatField("Annual Interest Rate (%)", validators=[DataRequired(), NumberRange(min=0, max=100)])
+    interest_rate = FloatField("Annual Interest Rate (%)", validators=[InputRequired(), NumberRange(min=0, max=100)])
     down_payment = FloatField("Down Payment", validators=[Optional(), NumberRange(min=0)], default=0)
     start_date = DateField("Start Date", validators=[DataRequired()])
     tenure_months = IntegerField("Tenure (months)", validators=[DataRequired(), NumberRange(min=1, max=600)])
@@ -48,7 +48,7 @@ class MarkPaidForm(FlaskForm):
 
 
 class InterestRevisionForm(FlaskForm):
-    new_rate = FloatField("New Interest Rate (%)", validators=[DataRequired(), NumberRange(min=0, max=100)])
+    new_rate = FloatField("New Interest Rate (%)", validators=[InputRequired(), NumberRange(min=0, max=100)])
     effective_date = DateField("Effective Date", validators=[DataRequired()])
     submit = SubmitField("Apply Revision")
 
