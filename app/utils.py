@@ -83,7 +83,7 @@ def generate_amortization(loan):
     bal_date = loan.balloon_date
     for i in range(1, months + 1):
         pay_date = loan.start_date + relativedelta(months=i)
-        interest = round(principal_outstanding * monthly_rate, 2)
+        interest = max(round(principal_outstanding * monthly_rate, 2), 0.0)
         principal_component = round(emi - interest, 2)
         is_balloon = False
 
@@ -100,6 +100,22 @@ def generate_amortization(loan):
                 "interest": interest,
                 "remaining_balance": 0.0,
                 "is_balloon": True,
+            })
+            break
+
+        if principal_component >= principal_outstanding:
+            # paid off early
+            principal_component = round(principal_outstanding, 2)
+            emi_row = round(principal_component + interest, 2)
+            principal_outstanding = 0.0
+            rows.append({
+                "month_index": i,
+                "payment_date": pay_date,
+                "emi": emi_row,
+                "principal": principal_component,
+                "interest": interest,
+                "remaining_balance": 0.0,
+                "is_balloon": False,
             })
             break
 
@@ -157,13 +173,20 @@ def recalc_unpaid_with_new_rate(loan, new_rate: float, effective_date: date):
     new_emi = emi_amount(remaining_principal, new_rate, months_left)
 
     for n, s in enumerate(sorted(unpaid, key=lambda x: x.month_index), start=1):
-        interest = round(remaining_principal * monthly_rate, 2)
+        interest = max(round(remaining_principal * monthly_rate, 2), 0.0)
         principal_component = round(new_emi - interest, 2)
-        if n == months_left:
+        if principal_component >= remaining_principal or n == months_left:
             principal_component = round(remaining_principal, 2)
             s.emi = round(principal_component + interest, 2)
-        else:
-            s.emi = new_emi
+            s.interest = interest
+            s.principal = principal_component
+            s.remaining_balance = 0.0
+            s.is_revised = True
+            for later in unpaid:
+                if later.month_index > s.month_index:
+                    db.session.delete(later)
+            break
+        s.emi = new_emi
         s.interest = interest
         s.principal = principal_component
         remaining_principal = round(remaining_principal - principal_component, 2)
@@ -191,13 +214,20 @@ def recalc_with_lumpsum(loan, lumpsum: float):
     monthly_rate = (float(loan.interest_rate) / 100.0) / 12.0
     new_emi = emi_amount(remaining, float(loan.interest_rate), months_left)
     for n, s in enumerate(unpaid, start=1):
-        interest = round(remaining * monthly_rate, 2)
+        interest = max(round(remaining * monthly_rate, 2), 0.0)
         principal_component = round(new_emi - interest, 2)
-        if n == months_left:
+        if principal_component >= remaining or n == months_left:
             principal_component = round(remaining, 2)
             s.emi = round(principal_component + interest, 2)
-        else:
-            s.emi = new_emi
+            s.interest = interest
+            s.principal = principal_component
+            s.remaining_balance = 0.0
+            s.is_revised = True
+            for later in unpaid:
+                if later.month_index > s.month_index:
+                    db.session.delete(later)
+            break
+        s.emi = new_emi
         s.interest = interest
         s.principal = principal_component
         remaining = max(round(remaining - principal_component, 2), 0.0)

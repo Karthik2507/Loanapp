@@ -51,11 +51,18 @@ def index():
                 db.session.flush()
                 rem = remaining
                 for i in range(1, form.new_tenure.data + 1):
-                    interest = round(rem * monthly_rate, 2)
+                    interest = max(round(rem * monthly_rate, 2), 0.0)
                     principal = round(new_emi - interest, 2)
-                    if i == form.new_tenure.data:
+                    if i == form.new_tenure.data or principal >= rem:
                         principal = round(rem, 2)
                         emi = round(principal + interest, 2)
+                        rem = 0.0
+                        pay_date = start_date + relativedelta(months=i-1)
+                        db.session.add(Schedule(loan_id=loan.id, month_index=start_idx + i,
+                                                payment_date=pay_date, emi=emi, principal=principal,
+                                                interest=interest, remaining_balance=0.0, is_revised=True))
+                        loan.tenure_months = start_idx + i
+                        break
                     else:
                         emi = new_emi
                     rem = max(round(rem - principal, 2), 0.0)

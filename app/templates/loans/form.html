@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 payDate.setMonth(payDate.getMonth() + i);
             }
 
-            const interest = Number((principalOutstanding * monthlyRate).toFixed(2));
+            const interest = Math.max(Number((principalOutstanding * monthlyRate).toFixed(2)), 0.0);
             let principalComponent = Number((emi - interest).toFixed(2));
 
             if (balDate && payDate && payDate >= balDate) {
@@ -204,6 +204,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (i <= maxPreview) {
                     appendRow(i, emiRow, principalComponent, interest, 0.0, true);
+                }
+                break;
+            }
+
+            if (principalComponent >= principalOutstanding) {
+                principalComponent = Number(principalOutstanding.toFixed(2));
+                const emiRow = Number((principalComponent + interest).toFixed(2));
+                principalOutstanding = 0.0;
+                
+                if (i <= maxPreview) {
+                    appendRow(i, emiRow, principalComponent, interest, 0.0, false);
                 }
                 break;
             }
