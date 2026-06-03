@@ -31,6 +31,7 @@ class LoanForm(FlaskForm):
     loan_category = SelectField("Category", choices=CATEGORY_CHOICES, validators=[DataRequired()])
     bank_name = StringField("Bank / Lender", validators=[DataRequired(), Length(1, 120)])
     loan_amount = FloatField("Loan Amount", validators=[DataRequired(), NumberRange(min=0.01)])
+    custom_emi = FloatField("Revised Monthly EMI", validators=[Optional(), NumberRange(min=0.01)])
     interest_rate = FloatField("Annual Interest Rate (%)", validators=[InputRequired(), NumberRange(min=0, max=100)])
     down_payment = FloatField("Down Payment", validators=[Optional(), NumberRange(min=0)], default=0)
     start_date = DateField("Start Date", validators=[DataRequired()])

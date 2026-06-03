@@ -75,7 +75,10 @@ def generate_amortization(loan):
     annual_rate = float(loan.interest_rate)
     months = int(loan.tenure_months)
     monthly_rate = (annual_rate / 100.0) / 12.0
-    emi = emi_amount(principal_outstanding, annual_rate, months)
+    if loan.custom_emi:
+        emi = float(loan.custom_emi)
+    else:
+        emi = emi_amount(principal_outstanding, annual_rate, months)
 
     bal_date = loan.balloon_date
     for i in range(1, months + 1):

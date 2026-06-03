@@ -55,6 +55,7 @@ def add():
             loan_amount=form.loan_amount.data,
             interest_rate=form.interest_rate.data,
             down_payment=form.down_payment.data or 0,
+            custom_emi=form.custom_emi.data,
             start_date=form.start_date.data,
             tenure_months=form.tenure_months.data,
             balloon_date=form.balloon_date.data,

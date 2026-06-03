@@ -15,6 +15,13 @@
       <div class="form-row"><label>Category</label>{{ form.loan_category() }}</div>
       <div class="form-row"><label>Bank / Lender</label>{{ form.bank_name() }}</div>
       <div class="form-row"><label>Loan Amount</label>{{ form.loan_amount() }}{% for e in form.loan_amount.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+      {% if mode != 'edit' %}
+        <div class="form-row">
+          <label>Revised Monthly EMI Amount (optional)</label>
+          {{ form.custom_emi(placeholder="System calculated if empty") }}
+          {% for e in form.custom_emi.errors %}<div class="err">{{ e }}</div>{% endfor %}
+        </div>
+      {% endif %}
       <div class="form-row"><label>Annual Interest Rate (%)</label>{{ form.interest_rate() }}{% for e in form.interest_rate.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
       <div class="form-row"><label>Down Payment</label>{{ form.down_payment() }}</div>
       <div class="form-row"><label>Tenure (months)</label>{{ form.tenure_months() }}</div>

@@ -41,6 +41,7 @@ class Loan(db.Model):
     loan_amount = db.Column(db.Float, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)  # annual %
     down_payment = db.Column(db.Float, default=0)
+    custom_emi = db.Column(db.Float, nullable=True)
     start_date = db.Column(db.Date, nullable=False)
     tenure_months = db.Column(db.Integer, nullable=False)
     loan_status = db.Column(db.String(20), default="Active", index=True)
