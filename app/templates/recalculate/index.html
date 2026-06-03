@@ -14,7 +14,7 @@
 
 <div class="card" style="margin-bottom:16px"><div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <strong>Loan:</strong>
-  <select onchange="location.href=this.value+'?loan_pk='+this.value.split('=').pop()" style="padding:8px 12px;border:1px solid var(--slate-200);border-radius:10px">
+  <select onchange="location.href=this.value" style="padding:8px 12px;border:1px solid var(--slate-200);border-radius:10px">
     {% for l in loans %}
       <option value="{{ url_for('recalc.index') }}?loan_pk={{ l.id }}" {% if loan and l.id==loan.id %}selected{% endif %}>{{ l.loan_id }} — {{ l.loan_name }}</option>
     {% endfor %}
@@ -53,4 +53,43 @@
 </div>
 {% endif %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recalcTypeSelect = document.getElementById('recalc_type');
+    if (!recalcTypeSelect) return;
+
+    const rateRow = document.getElementById('new_rate').closest('.form-row');
+    const tenureRow = document.getElementById('new_tenure').closest('.form-row');
+    const extraRow = document.getElementById('extra_amount').closest('.form-row');
+    const dateRow = document.getElementById('effective_date').closest('.form-row');
+
+    function updateFieldVisibility() {
+        const selectedType = recalcTypeSelect.value;
+        
+        // Hide all first
+        rateRow.style.display = 'none';
+        tenureRow.style.display = 'none';
+        extraRow.style.display = 'none';
+        dateRow.style.display = 'none';
+
+        if (selectedType === 'RATE') {
+            rateRow.style.display = '';
+            dateRow.style.display = '';
+        } else if (selectedType === 'TENURE') {
+            tenureRow.style.display = '';
+        } else if (selectedType === 'EXTRA' || selectedType === 'LUMPSUM') {
+            extraRow.style.display = '';
+        } else if (selectedType === 'PAYOFF') {
+            // No extra fields needed
+        }
+    }
+
+    recalcTypeSelect.addEventListener('change', updateFieldVisibility);
+    // Initial run
+    updateFieldVisibility();
+});
+</script>
 {% endblock %}
