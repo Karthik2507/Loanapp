@@ -57,7 +57,7 @@ def add():
             down_payment=form.down_payment.data or 0,
             custom_emi=form.custom_emi.data,
             start_date=form.start_date.data,
-            tenure_months=form.tenure_months.data * 12 if form.tenure_unit.data == "years" else form.tenure_months.data,
+            tenure_months=int(round(form.tenure_months.data * 12)) if form.tenure_unit.data == "years" else int(form.tenure_months.data),
             balloon_date=form.balloon_date.data,
             balloon_amount=form.balloon_amount.data,
             notes=form.notes.data,

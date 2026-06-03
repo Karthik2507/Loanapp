@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, FloatField, IntegerField, DateField, SelectField, TextAreaField, SubmitField, BooleanField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, Regexp, InputRequired
+from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, Regexp, InputRequired, ValidationError
 
 
 CURRENCY_CHOICES = [("INR", "₹ INR"), ("USD", "$ USD"), ("EUR", "€ EUR"), ("GBP", "£ GBP"), ("JPY", "¥ JPY")]
@@ -35,12 +35,22 @@ class LoanForm(FlaskForm):
     interest_rate = FloatField("Annual Interest Rate (%)", validators=[InputRequired(), NumberRange(min=0, max=100)])
     down_payment = FloatField("Down Payment", validators=[Optional(), NumberRange(min=0)], default=0)
     start_date = DateField("Start Date", validators=[DataRequired()])
-    tenure_months = IntegerField("Tenure", validators=[DataRequired(), NumberRange(min=1, max=600)])
+    tenure_months = FloatField("Tenure", validators=[DataRequired(), NumberRange(min=0.01, max=600)])
     tenure_unit = SelectField("Tenure Unit", choices=[("months", "Months"), ("years", "Years")], default="months")
     balloon_date = DateField("Balloon Date", validators=[Optional()])
     balloon_amount = FloatField("Balloon Amount", validators=[Optional(), NumberRange(min=0)])
     notes = TextAreaField("Notes", validators=[Optional(), Length(max=1000)])
     submit = SubmitField("Save Loan")
+
+    def validate_tenure_months(self, field):
+        if field.data is not None:
+            if self.tenure_unit.data == "months":
+                if not field.data.is_integer():
+                    raise ValidationError("Tenure in months must be a whole number (no decimals allowed).")
+            else:
+                months = field.data * 12
+                if int(round(months)) < 1:
+                    raise ValidationError("Tenure must convert to at least 1 month.")
 
 
 class MarkPaidForm(FlaskForm):

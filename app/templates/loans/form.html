@@ -17,6 +17,94 @@
     width: 100% !important;
   }
 }
+/* Confirmation Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-container {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  border: 1px solid var(--slate-200);
+}
+.modal-overlay.open .modal-container {
+  transform: scale(1) translateY(0);
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--slate-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--slate-50);
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--slate-900);
+}
+.modal-body {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.modal-body p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--slate-500);
+  margin-bottom: 18px;
+}
+.confirm-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px 16px;
+  font-size: 13px;
+  background: var(--slate-50);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--slate-100);
+}
+.confirm-label {
+  font-weight: 600;
+  color: var(--slate-500);
+}
+.confirm-value {
+  color: var(--slate-800);
+  font-weight: 500;
+  word-break: break-all;
+}
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--slate-100);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--slate-50);
+}
 </style>
 {% endblock %}
 
@@ -100,6 +188,64 @@
             <tr><td colspan="5" style="text-align:center;color:var(--slate-400)">Enter loan details to view preview</td></tr>
           </tbody>
         </table>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>Confirm Loan Details</h3>
+          <button type="button" class="btn ghost sm" id="closeModalBtn" style="padding:4px;border-radius:50%">
+            <i data-lucide="x" style="width:18px;height:18px"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Please review the details below. Creating a loan will generate a permanent amortization schedule based on these entries.</p>
+          <div class="confirm-grid">
+            <div class="confirm-label" id="lbl_loan_id">Loan ID</div>
+            <div class="confirm-value" id="val_loan_id"></div>
+
+            <div class="confirm-label" id="lbl_loan_name">Loan Name</div>
+            <div class="confirm-value" id="val_loan_name"></div>
+
+            <div class="confirm-label" id="lbl_category">Category</div>
+            <div class="confirm-value" id="val_category"></div>
+
+            <div class="confirm-label" id="lbl_bank_name">Lender / Bank</div>
+            <div class="confirm-value" id="val_bank_name"></div>
+
+            <div class="confirm-label" id="lbl_loan_amount">Loan Amount</div>
+            <div class="confirm-value" id="val_loan_amount" style="font-weight:600;color:var(--slate-900)"></div>
+
+            <div class="confirm-label" id="lbl_down_payment">Down Payment</div>
+            <div class="confirm-value" id="val_down_payment"></div>
+
+            <div class="confirm-label" id="lbl_interest_rate">Interest Rate</div>
+            <div class="confirm-value" id="val_interest_rate"></div>
+
+            <div class="confirm-label" id="lbl_tenure">Tenure</div>
+            <div class="confirm-value" id="val_tenure" style="font-weight:600"></div>
+
+            <div class="confirm-label" id="lbl_start_date">Start Date</div>
+            <div class="confirm-value" id="val_start_date"></div>
+
+            <div class="confirm-label" id="lbl_custom_emi">Revised EMI</div>
+            <div class="confirm-value" id="val_custom_emi"></div>
+
+            <div class="confirm-label" id="lbl_balloon_date">Balloon Date</div>
+            <div class="confirm-value" id="val_balloon_date"></div>
+
+            <div class="confirm-label" id="lbl_balloon_amount">Balloon Amount</div>
+            <div class="confirm-value" id="val_balloon_amount"></div>
+
+            <div class="confirm-label" id="lbl_notes">Notes</div>
+            <div class="confirm-value" id="val_notes" style="white-space:pre-wrap"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" id="cancelModalBtn">Cancel & Edit</button>
+          <button type="button" class="btn" id="confirmModalBtn">Confirm & Create</button>
+        </div>
       </div>
     </div>
   {% endif %}
@@ -147,6 +293,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Handle dynamic step attribute based on Tenure Unit
+    const tenureMonthsInput = document.getElementById('tenure_months');
+    const tenureUnitSelect = document.getElementById('tenure_unit');
+    
+    function updateStep() {
+        if (!tenureMonthsInput || !tenureUnitSelect) return;
+        if (tenureUnitSelect.value === 'years') {
+            tenureMonthsInput.setAttribute('step', 'any');
+        } else {
+            tenureMonthsInput.setAttribute('step', '1');
+        }
+    }
+    
+    if (tenureUnitSelect) {
+        tenureUnitSelect.addEventListener('change', updateStep);
+        updateStep();
+    }
+
     function emiAmount(principal, annualRate, months) {
         if (months <= 0) return 0.0;
         const r = (annualRate / 100.0) / 12.0;
@@ -165,10 +329,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const annualRate = parseFloat(document.getElementById('interest_rate').value || 0);
         const tenureUnitEl = document.getElementById('tenure_unit');
         const tenureUnit = tenureUnitEl ? tenureUnitEl.value : 'months';
-        let months = parseInt(document.getElementById('tenure_months').value || 0);
-        if (tenureUnit === 'years') {
-            months = months * 12;
-        }
+        
+        const tenureValue = parseFloat(document.getElementById('tenure_months').value || 0);
+        let months = tenureUnit === 'years' ? Math.round(tenureValue * 12) : Math.round(tenureValue);
+        
         const balloonDateEl = document.getElementById('balloon_date');
         const balloonAmountEl = document.getElementById('balloon_amount');
         const startDateEl = document.getElementById('start_date');
@@ -266,6 +430,165 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td class="num">${formatMoney(balanceRow)}</td>
             `;
             tbody.appendChild(tr);
+        }
+    }
+
+    // Modal Confirmation Script
+    const form = document.querySelector('form');
+    const modal = document.getElementById('confirmModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const confirmModalBtn = document.getElementById('confirmModalBtn');
+    
+    let isConfirmed = false;
+
+    if (form && modal) {
+        form.addEventListener('submit', function(e) {
+            if (isConfirmed) return;
+            
+            // Basic validity check
+            let isValid = true;
+            const requiredIds = ['loan_id', 'loan_name', 'bank_name', 'loan_amount', 'interest_rate', 'tenure_months', 'start_date'];
+            requiredIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || !el.value.trim()) {
+                    isValid = false;
+                }
+            });
+            
+            // Check tenure values
+            if (tenureMonthsInput && tenureUnitSelect) {
+                const val = parseFloat(tenureMonthsInput.value || 0);
+                if (val <= 0) {
+                    isValid = false;
+                }
+                if (tenureUnitSelect.value === 'months' && !Number.isInteger(val)) {
+                    isValid = false;
+                }
+            }
+            
+            // Other numeric fields positive check
+            const loanAmtVal = parseFloat(document.getElementById('loan_amount').value || 0);
+            const rateVal = parseFloat(document.getElementById('interest_rate').value || 0);
+            if (loanAmtVal <= 0 || rateVal < 0) {
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                isConfirmed = true;
+                form.submit();
+                return;
+            }
+            
+            // Prevent submission
+            e.preventDefault();
+            
+            // Populate and open modal
+            populateConfirmationModal();
+            modal.classList.add('open');
+            
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+        
+        const closeModal = () => {
+            modal.classList.remove('open');
+        };
+        
+        if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+        if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        if (confirmModalBtn) {
+            confirmModalBtn.addEventListener('click', function() {
+                isConfirmed = true;
+                form.submit();
+            });
+        }
+    }
+
+    function populateConfirmationModal() {
+        const formatMoney = (val) => {
+            return '₹ ' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val || '—';
+        };
+        
+        const toggleRow = (lblId, valId, show) => {
+            const lbl = document.getElementById(lblId);
+            const val = document.getElementById(valId);
+            if (lbl && val) {
+                lbl.style.display = show ? '' : 'none';
+                val.style.display = show ? '' : 'none';
+            }
+        };
+
+        // Standard fields
+        setVal('val_loan_id', document.getElementById('loan_id').value);
+        setVal('val_loan_name', document.getElementById('loan_name').value);
+        
+        const catSelect = document.getElementById('loan_category');
+        setVal('val_category', catSelect ? catSelect.options[catSelect.selectedIndex].text : '');
+        
+        setVal('val_bank_name', document.getElementById('bank_name').value);
+        
+        const principal = parseFloat(document.getElementById('loan_amount').value || 0);
+        setVal('val_loan_amount', formatMoney(principal));
+        
+        const downPayment = parseFloat(document.getElementById('down_payment').value || 0);
+        setVal('val_down_payment', formatMoney(downPayment));
+        
+        const rate = parseFloat(document.getElementById('interest_rate').value || 0);
+        setVal('val_interest_rate', rate + '%');
+        
+        const tenureVal = parseFloat(tenureMonthsInput.value || 0);
+        const unitText = tenureUnitSelect.options[tenureUnitSelect.selectedIndex].text;
+        const monthsVal = tenureUnitSelect.value === 'years' ? Math.round(tenureVal * 12) : Math.round(tenureVal);
+        const tenureText = tenureUnitSelect.value === 'years' 
+            ? `${tenureVal} ${unitText} (${monthsVal} Months)` 
+            : `${tenureVal} ${unitText}`;
+        setVal('val_tenure', tenureText);
+        
+        setVal('val_start_date', document.getElementById('start_date').value);
+        
+        // Optional custom emi
+        const customEmiEl = document.getElementById('custom_emi');
+        const customEmi = customEmiEl ? parseFloat(customEmiEl.value || 0) : 0;
+        if (customEmi > 0) {
+            setVal('val_custom_emi', formatMoney(customEmi));
+            toggleRow('lbl_custom_emi', 'val_custom_emi', true);
+        } else {
+            toggleRow('lbl_custom_emi', 'val_custom_emi', false);
+        }
+        
+        // Optional balloon
+        const balloonDate = document.getElementById('balloon_date').value;
+        const balloonAmount = parseFloat(document.getElementById('balloon_amount').value || 0);
+        if (balloonDate && balloonAmount > 0) {
+            setVal('val_balloon_date', balloonDate);
+            setVal('val_balloon_amount', formatMoney(balloonAmount));
+            toggleRow('lbl_balloon_date', 'val_balloon_date', true);
+            toggleRow('lbl_balloon_amount', 'val_balloon_amount', true);
+        } else {
+            toggleRow('lbl_balloon_date', 'val_balloon_date', false);
+            toggleRow('lbl_balloon_amount', 'val_balloon_amount', false);
+        }
+        
+        // Optional notes
+        const notes = document.getElementById('notes').value.trim();
+        if (notes) {
+            setVal('val_notes', notes);
+            toggleRow('lbl_notes', 'val_notes', true);
+        } else {
+            toggleRow('lbl_notes', 'val_notes', false);
         }
     }
 });
