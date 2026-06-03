@@ -82,33 +82,45 @@
   </div>
 </div>
 
-<div class="grid grid-2" style="margin-bottom:16px">
+<div class="grid grid-3" style="margin-bottom:16px">
   <div class="card">
     <div class="card-header">
       <h3>Loan Distribution</h3><span style="font-size:12px;color:var(--slate-500)">By bank</span>
     </div>
-    <div class="card-body"><canvas id="distChart" height="180"></canvas></div>
+    <div class="card-body"><canvas id="distChart" height="140"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Category Distribution</h3><span style="font-size:12px;color:var(--slate-500)">By category</span>
+    </div>
+    <div class="card-body"><canvas id="catChart" height="140"></canvas></div>
   </div>
   <div class="card">
     <div class="card-header">
       <h3>Cash Flow Projection</h3><span style="font-size:12px;color:var(--slate-500)">Next 12 months</span>
     </div>
-    <div class="card-body"><canvas id="cashChart" height="180"></canvas></div>
+    <div class="card-body"><canvas id="cashChart" height="140"></canvas></div>
   </div>
 </div>
 
-<div class="grid grid-2" style="margin-bottom:16px">
+<div class="grid grid-3" style="margin-bottom:16px">
   <div class="card">
     <div class="card-header">
-      <h3>Debt Reduction Trend</h3>
+      <h3>Paid vs Outstanding</h3><span style="font-size:12px;color:var(--slate-500)">Overview</span>
     </div>
-    <div class="card-body"><canvas id="debtChart" height="180"></canvas></div>
+    <div class="card-body"><canvas id="paidOutstandingChart" height="140"></canvas></div>
   </div>
   <div class="card">
     <div class="card-header">
-      <h3>Interest Burden</h3>
+      <h3>Debt Reduction Trend</h3><span style="font-size:12px;color:var(--slate-500)">Projected</span>
     </div>
-    <div class="card-body"><canvas id="burdenChart" height="180"></canvas></div>
+    <div class="card-body"><canvas id="debtChart" height="140"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Interest Burden</h3><span style="font-size:12px;color:var(--slate-500)">Financials</span>
+    </div>
+    <div class="card-body"><canvas id="burdenChart" height="140"></canvas></div>
   </div>
 </div>
 
@@ -174,57 +186,92 @@
   </div>
 </div>
 
-<script id="charts-data" type="application/json">{{ charts|tojson }}</script>
+<script id="charts-data" type="application/json">
+{
+  "charts": {{ charts|tojson }},
+  "stats": {{ stats|tojson }}
+}
+</script>
 <script>
   window.__dashboard = (function () {
     const ctx = id => document.getElementById(id);
-    let dist, cash, debt, burden;
-    function build(data) {
+    let dist, cat, cash, paidOutstanding, debt, burden;
+    function build(chartsData, statsData) {
       const palette = ['#1D4ED8', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
-      const bankLabels = Object.keys(data.by_bank);
-      const bankValues = Object.values(data.by_bank);
+      
+      // 1. Bank Distribution
+      const bankLabels = Object.keys(chartsData.by_bank);
+      const bankValues = Object.values(chartsData.by_bank);
       if (dist) dist.destroy();
       dist = new Chart(ctx('distChart'), {
         type: 'doughnut',
         data: { labels: bankLabels, datasets: [{ data: bankValues, backgroundColor: palette, borderWidth: 0 }] },
-        options: { plugins: { legend: { position: 'right' } }, cutout: '62%' }
+        options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '62%', maintainAspectRatio: false }
       });
 
+      // 2. Category Distribution
+      const catLabels = Object.keys(chartsData.by_cat);
+      const catValues = Object.values(chartsData.by_cat);
+      if (cat) cat.destroy();
+      cat = new Chart(ctx('catChart'), {
+        type: 'doughnut',
+        data: { labels: catLabels, datasets: [{ data: catValues, backgroundColor: palette, borderWidth: 0 }] },
+        options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '62%', maintainAspectRatio: false }
+      });
+
+      // 3. Cash Flow
       if (cash) cash.destroy();
       cash = new Chart(ctx('cashChart'), {
         type: 'line',
         data: {
-          labels: data.cashflow.map(c => c.month), datasets: [{
-            label: 'EMI Due', data: data.cashflow.map(c => c.amount),
+          labels: chartsData.cashflow.map(c => c.month), datasets: [{
+            label: 'EMI Due', data: chartsData.cashflow.map(c => c.amount),
             borderColor: '#1D4ED8', backgroundColor: 'rgba(29,78,216,.10)', tension: .35, fill: true, pointRadius: 3
           }]
         },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }, maintainAspectRatio: false }
       });
 
+      // 4. Paid vs Outstanding
+      if (paidOutstanding) paidOutstanding.destroy();
+      paidOutstanding = new Chart(ctx('paidOutstandingChart'), {
+        type: 'pie',
+        data: {
+          labels: ['Total Paid', 'Outstanding'],
+          datasets: [{
+            data: [statsData.total_paid, statsData.outstanding],
+            backgroundColor: ['#10B981', '#F59E0B'],
+            borderWidth: 0
+          }]
+        },
+        options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, maintainAspectRatio: false }
+      });
+
+      // 5. Debt Reduction
       if (debt) debt.destroy();
       debt = new Chart(ctx('debtChart'), {
         type: 'line',
         data: {
-          labels: data.debt_trend.map(c => c.month), datasets: [{
-            label: 'Remaining', data: data.debt_trend.map(c => c.remaining),
+          labels: chartsData.debt_trend.map(c => c.month), datasets: [{
+            label: 'Remaining', data: chartsData.debt_trend.map(c => c.remaining),
             borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,.18)', tension: .35, fill: true, pointRadius: 3
           }]
         },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }, maintainAspectRatio: false }
       });
 
+      // 6. Interest Burden
       if (burden) burden.destroy();
       burden = new Chart(ctx('burdenChart'), {
         type: 'bar',
         data: {
-          labels: ['Principal Remaining', 'Interest Remaining', 'Interest Saved'],
+          labels: ['Principal', 'Interest', 'Saved'],
           datasets: [{
-            data: [data.interest_burden.principal_remaining, data.interest_burden.interest_remaining, data.interest_burden.interest_saved],
-            backgroundColor: ['#1D4ED8', '#F59E0B', '#10B981'], borderRadius: 8, barThickness: 36
+            data: [chartsData.interest_burden.principal_remaining, chartsData.interest_burden.interest_remaining, chartsData.interest_burden.interest_saved],
+            backgroundColor: ['#1D4ED8', '#F59E0B', '#10B981'], borderRadius: 8, barThickness: 24
           }]
         },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }, maintainAspectRatio: false }
       });
     }
     function update(payload) {
@@ -233,11 +280,11 @@
         if (el) el.textContent = typeof v === 'number' && k !== 'health' && k !== 'active' && k !== 'completed' && k !== 'closed_this_month'
           ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v;
       });
-      build(payload.charts);
+      build(payload.charts, payload.stats);
     }
     document.addEventListener('DOMContentLoaded', () => {
       const data = JSON.parse(document.getElementById('charts-data').textContent);
-      setTimeout(() => build(data), 50);
+      setTimeout(() => build(data.charts, data.stats), 50);
     });
     return { update };
   })();
