@@ -151,3 +151,106 @@ def annual_summary_csv(loan_pk):
     filename = f"annual_summary_{loan.loan_id}.csv"
     return Response(output.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@schedule_bp.route("/<int:loan_pk>/download/csv")
+@login_required
+def download_csv(loan_pk):
+    import csv
+    import io
+    from flask import Response
+    
+    loan = _get_loan(loan_pk)
+    schedules = loan.schedules.all()
+    
+    output = io.StringIO()
+    w = csv.writer(output)
+    w.writerow(["Installment #", "Payment Date", "EMI", "Principal", "Interest", "Remaining Balance", "Status", "Paid Date", "Flags"])
+    for s in schedules:
+        flags = []
+        if s.is_balloon:
+            flags.append("Balloon")
+        if s.is_revised:
+            flags.append("Revised")
+        w.writerow([
+            s.month_index,
+            s.payment_date.isoformat(),
+            f"{s.emi:.2f}",
+            f"{s.principal:.2f}",
+            f"{s.interest:.2f}",
+            f"{s.remaining_balance:.2f}",
+            s.payment_status,
+            s.paid_date.isoformat() if s.paid_date else "",
+            ", ".join(flags)
+        ])
+        
+    filename = f"schedule_{loan.loan_id}.csv"
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@schedule_bp.route("/<int:loan_pk>/download/pdf")
+@login_required
+def download_pdf(loan_pk):
+    import io
+    from flask import Response
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    
+    loan = _get_loan(loan_pk)
+    schedules = loan.schedules.all()
+    
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), topMargin=24, bottomMargin=24, leftMargin=24, rightMargin=24)
+    styles = getSampleStyleSheet()
+    
+    title_text = f"Amortization Schedule: {loan.loan_name} ({loan.loan_id})"
+    subtitle_text = f"Bank: {loan.bank_name} | Rate: {loan.interest_rate:.2f}% | Tenure: {loan.tenure_months} months | Remaining Balance: {loan.remaining_balance:.2f}"
+    
+    elems = [
+        Paragraph(title_text, styles["Title"]),
+        Paragraph(subtitle_text, styles["Normal"]),
+        Spacer(1, 12)
+    ]
+    
+    data = [["#", "Payment Date", "EMI", "Principal", "Interest", "Balance", "Status", "Paid Date", "Flags"]]
+    for s in schedules:
+        flags = []
+        if s.is_balloon:
+            flags.append("Balloon")
+        if s.is_revised:
+            flags.append("Revised")
+            
+        data.append([
+            str(s.month_index),
+            s.payment_date.strftime("%d %b %Y"),
+            f"{s.emi:,.2f}",
+            f"{s.principal:,.2f}",
+            f"{s.interest:,.2f}",
+            f"{s.remaining_balance:,.2f}",
+            s.payment_status,
+            s.paid_date.strftime("%d %b %Y") if s.paid_date else "—",
+            ", ".join(flags)
+        ])
+        
+    t = Table(data, repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E40AF")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CBD5E1")),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+        ("ALIGN", (2, 1), (5, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+    ]))
+    elems.append(t)
+    doc.build(elems)
+    buf.seek(0)
+    
+    filename = f"schedule_{loan.loan_id}.pdf"
+    return Response(buf.getvalue(), mimetype="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
