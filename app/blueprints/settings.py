@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, logout_user
 from app import db
 from app.models import User, ActivityLog
 from app.forms import ProfileForm, PreferencesForm, ChangePasswordForm
@@ -61,7 +61,9 @@ def change_password():
         current_user.set_password(form.new_password.data)
         db.session.add(ActivityLog(user_id=current_user.id, action="CHANGE_PASSWORD", detail="Password changed"))
         db.session.commit()
-        flash("Password changed.", "success")
+        logout_user()
+        flash("Password changed. Please log in again to verify.", "success")
+        return redirect(url_for("auth.login"))
     else:
         flash("Please correct the errors.", "danger")
     return redirect(url_for("settings.index"))
