@@ -31,7 +31,7 @@
       <div class="form-grid">
         <div class="form-row"><label>New Rate (%)</label>{{ form.new_rate() }}</div>
         <div class="form-row"><label>New Tenure (months)</label>{{ form.new_tenure() }}</div>
-        <div class="form-row"><label>Extra / Lump-Sum Amount</label>{{ form.extra_amount() }}</div>
+        <div class="form-row"><label>Extra Amount</label>{{ form.extra_amount() }}</div>
         <div class="form-row"><label>Effective Date</label>{{ form.effective_date() }}</div>
       </div>
       <button class="btn" type="submit"><i data-lucide="calculator"></i> Recalculate</button>
@@ -46,9 +46,6 @@
       <tr><td>Remaining</td><td>{{ loan.remaining_balance|money }}</td></tr>
       <tr><td>Completion</td><td>{{ '%.0f'|format(loan.completion_percentage) }}%</td></tr>
     </table>
-    {% if simulation %}
-    <div class="insight" style="margin-top:14px"><i data-lucide="zap"></i> Early payoff today: {{ simulation.payoff_today|money }}</div>
-    {% endif %}
   </div>
 </div>
 {% endif %}
@@ -80,10 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dateRow.style.display = '';
         } else if (selectedType === 'TENURE') {
             tenureRow.style.display = '';
-        } else if (selectedType === 'EXTRA' || selectedType === 'LUMPSUM') {
+        } else if (selectedType === 'EXTRA') {
             extraRow.style.display = '';
-        } else if (selectedType === 'PAYOFF') {
-            // No extra fields needed
         }
     }
 
