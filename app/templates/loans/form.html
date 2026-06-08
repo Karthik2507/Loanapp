@@ -211,7 +211,12 @@
         <div class="form-row"><label>Loan Name</label>{{ form.loan_name(placeholder="Home Loan — Apartment") }}{% for e in form.loan_name.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
         <div class="form-row"><label>Category</label>{{ form.loan_category() }}</div>
         <div class="form-row"><label>Bank / Lender</label>{{ form.bank_name() }}</div>
-        <div class="form-row"><label>Loan Amount</label>{{ form.loan_amount() }}{% for e in form.loan_amount.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+        <div class="form-row">
+          <label>Loan Amount</label>
+          {{ form.loan_amount() }}
+          <span id="loanAmountWords" style="font-size: 12px; color: var(--slate-500); margin-top: 4px; display: block; font-weight: 500;"></span>
+          {% for e in form.loan_amount.errors %}<div class="err">{{ e }}</div>{% endfor %}
+        </div>
         {% if mode != 'edit' %}
           <div class="form-row">
             <label>Revised Monthly EMI Amount (optional)</label>
@@ -415,6 +420,80 @@
 {% if mode != 'edit' %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const loanAmountInput = document.getElementById('loan_amount');
+    const loanAmountWords = document.getElementById('loanAmountWords');
+
+    function numberToIndianWords(num) {
+        const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+        const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+        function inWords999(n) {
+            let s = '';
+            if (n >= 100) {
+                s += a[Math.floor(n / 100)] + 'hundred ';
+                n %= 100;
+            }
+            if (n > 0) {
+                if (s !== '') s += 'and ';
+                if (n < 20) {
+                    s += a[n];
+                } else {
+                    const digit = n % 10;
+                    s += b[Math.floor(n / 10)] + (digit ? '-' + a[digit] : ' ');
+                }
+            }
+            return s;
+        }
+
+        function recursiveWords(n) {
+            if (n === 0) return '';
+            
+            let str = '';
+            if (n >= 10000000) {
+                str += recursiveWords(Math.floor(n / 10000000)) + 'crore ';
+                n %= 10000000;
+            }
+            if (n >= 100000) {
+                str += inWords999(Math.floor(n / 100000)) + 'lakh ';
+                n %= 100000;
+            }
+            if (n >= 1000) {
+                str += inWords999(Math.floor(n / 1000)) + 'thousand ';
+                n %= 1000;
+            }
+            if (n > 0) {
+                str += inWords999(n);
+            }
+            return str;
+        }
+
+        if (num === 0) return 'zero';
+        
+        const whole = Math.floor(num);
+        const fraction = Math.round((num - whole) * 100);
+        
+        let words = recursiveWords(whole);
+        if (fraction > 0) {
+            words += 'and ' + inWords999(fraction) + 'paise';
+        }
+        
+        return words.replace(/\s+/g, ' ').trim();
+    }
+
+    if (loanAmountInput && loanAmountWords) {
+        const updateWords = () => {
+            const val = parseFloat(loanAmountInput.value || 0);
+            if (val <= 0 || isNaN(val)) {
+                loanAmountWords.textContent = '';
+                return;
+            }
+            const words = numberToIndianWords(val);
+            loanAmountWords.textContent = '(' + words.charAt(0).toUpperCase() + words.slice(1) + ')';
+        };
+        loanAmountInput.addEventListener('input', updateWords);
+        updateWords();
+    }
+
     const toggleBtn = document.getElementById('togglePreviewBtn');
     const previewCard = document.getElementById('previewCard');
     

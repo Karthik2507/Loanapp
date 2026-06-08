@@ -1,10 +1,158 @@
 {% extends "base.html" %}
 {% block title %}Loans · LoanLedger{% endblock %}
 {% block crumbs %}<a href="{{ url_for('dashboard.index') }}">Dashboard</a> / <strong>Loans</strong>{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Dropdown Styles */
+.dropdown-container {
+  position: relative;
+}
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 5px;
+  background: #fff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  min-width: 180px;
+  padding: 6px 0;
+}
+.dropdown-menu.open {
+  display: block;
+}
+.dropdown-menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--slate-700);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.dropdown-menu a:hover {
+  background: var(--slate-50);
+  color: var(--slate-900);
+  text-decoration: none;
+}
+/* Upload Styles */
+.upload-dropzone {
+  border: 2px dashed var(--slate-300);
+  border-radius: var(--radius-sm);
+  padding: 32px 20px;
+  text-align: center;
+  background: var(--slate-50);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upload-dropzone:hover, .upload-dropzone.dragover {
+  border-color: var(--blue-500);
+  background: var(--blue-50);
+}
+.upload-dropzone i {
+  color: var(--slate-400);
+  margin-bottom: 8px;
+}
+.upload-dropzone p {
+  color: var(--slate-600);
+  margin: 4px 0;
+}
+.warning-box {
+  background: #FFFBEB;
+  border: 1px solid #FEF3C7;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+/* Modal Overlay Styles (since form.html has it but base.html doesn't) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-container {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  border: 1px solid var(--slate-200);
+}
+.modal-overlay.open .modal-container {
+  transform: scale(1) translateY(0);
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--slate-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--slate-50);
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--slate-900);
+}
+.modal-body {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--slate-100);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--slate-50);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div class="title-block"><h1>Loans</h1><div class="sub">All your active and pending loans.</div></div>
-  <div class="actions">
+  <div class="actions" style="display:flex; gap:10px;">
+    <div class="dropdown-container">
+      <button class="btn secondary" id="bulkLoadBtn" type="button">
+        <i data-lucide="upload-cloud"></i> Bulk Load <i data-lucide="chevron-down" style="width:16px;height:16px;margin-left:4px"></i>
+      </button>
+      <div class="dropdown-menu" id="bulkLoadDropdown">
+        <a href="#" id="downloadTemplateBtn">
+          <i data-lucide="download" style="width:14px;height:14px;"></i> Download Template
+        </a>
+        <a href="#" id="bulkUploadBtn">
+          <i data-lucide="upload" style="width:14px;height:14px;"></i> Bulk Upload
+        </a>
+      </div>
+    </div>
     <a href="{{ url_for('loans.archived') }}" class="btn secondary"><i data-lucide="archive"></i> Archived</a>
     <!-- <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a> -->
   </div>
@@ -68,4 +216,476 @@
   {% endfor %}
 </div>
 {% endif %}
+
+    <!-- Bulk Upload Modal -->
+    <div id="bulkUploadModal" class="modal-overlay">
+      <div class="modal-container" style="max-width: 760px; width: 95%;">
+        <div class="modal-header">
+          <h3>Bulk Load Loans</h3>
+          <button type="button" class="btn ghost sm" id="closeBulkModalBtn" style="padding:4px;border-radius:50%">
+            <i data-lucide="x" style="width:18px;height:18px"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="max-height: 65vh;">
+          <!-- Dropzone -->
+          <div class="upload-dropzone" id="uploadDropzone">
+            <i data-lucide="file-spreadsheet" style="width:40px;height:40px"></i>
+            <p style="font-weight:600">Drag and drop your loans file here</p>
+            <p style="font-size:12px;color:var(--slate-400)">Supports Excel files (.xlsx) based on our template</p>
+            <input type="file" id="bulkFileInput" accept=".xlsx" style="display:none">
+          </div>
+          
+          <!-- Loading state -->
+          <div id="previewLoading" style="display:none; text-align:center; padding:24px;">
+            <div class="spinner"></div>
+            <p style="margin-top:8px; font-size:13px; color:var(--slate-500)">Parsing file...</p>
+          </div>
+
+          <!-- Preview Content -->
+          <div id="previewContainer" style="display:none; margin-top:20px;">
+            <!-- Valid rows -->
+            <div style="margin-bottom:20px;">
+              <h4 style="font-size:13px; color:var(--success); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+                <i data-lucide="check-circle" style="width:16px;height:16px"></i> Ready to import (<span id="validCount">0</span> rows)
+              </h4>
+              <div class="table-wrap" style="max-height:160px; border:1px solid var(--slate-100); border-radius:var(--radius-sm)">
+                <table class="tbl" style="font-size:12px">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Lender</th>
+                      <th class="num">Amount</th>
+                      <th class="num">Interest</th>
+                      <th>Tenure</th>
+                      <th>Start Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="validRowsTbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Warning rows -->
+            <div id="warningContainer" class="warning-box" style="display:none;">
+              <h4 style="font-size:13px; color:#D97706; display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:600;">
+                <i data-lucide="alert-triangle" style="width:16px;height:16px"></i> Warnings: Missing required columns (<span id="invalidCount">0</span> rows)
+              </h4>
+              <p style="font-size:12px; color:#B45309; margin-bottom:8px;">The rows below are missing one or more required columns (Start Date, Tenure, Interest, or Loan Amount) and will be **ignored** during import.</p>
+              <div class="table-wrap" style="max-height:120px; border:1px solid #FDE68A; border-radius:var(--radius-sm); background:#fff;">
+                <table class="tbl" style="font-size:12px">
+                  <thead>
+                    <tr>
+                      <th style="background:#FFFDF5">Row #</th>
+                      <th style="background:#FFFDF5">Loan ID</th>
+                      <th style="background:#FFFDF5">Loan Name</th>
+                      <th style="background:#FFFDF5">Missing Fields</th>
+                    </tr>
+                  </thead>
+                  <tbody id="invalidRowsTbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" id="cancelBulkBtn">Cancel</button>
+          <button type="button" class="btn" id="confirmBulkBtn" disabled>Submit</button>
+        </div>
+      </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bulkLoadBtn = document.getElementById('bulkLoadBtn');
+    const bulkLoadDropdown = document.getElementById('bulkLoadDropdown');
+    
+    if (bulkLoadBtn && bulkLoadDropdown) {
+        bulkLoadBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            bulkLoadDropdown.classList.toggle('open');
+        });
+        document.addEventListener('click', function() {
+            bulkLoadDropdown.classList.remove('open');
+        });
+    }
+
+    const bulkUploadModal = document.getElementById('bulkUploadModal');
+    const bulkUploadBtn = document.getElementById('bulkUploadBtn');
+    const closeBulkModalBtn = document.getElementById('closeBulkModalBtn');
+    const cancelBulkBtn = document.getElementById('cancelBulkBtn');
+    const confirmBulkBtn = document.getElementById('confirmBulkBtn');
+    
+    let parsedLoansData = [];
+
+    if (bulkUploadBtn && bulkUploadModal) {
+        bulkUploadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            bulkUploadModal.classList.add('open');
+            resetBulkUpload();
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+        
+        const closeBulk = () => {
+            bulkUploadModal.classList.remove('open');
+        };
+        
+        if (closeBulkModalBtn) closeBulkModalBtn.addEventListener('click', closeBulk);
+        if (cancelBulkBtn) cancelBulkBtn.addEventListener('click', closeBulk);
+        bulkUploadModal.addEventListener('click', function(e) {
+            if (e.target === bulkUploadModal) {
+                closeBulk();
+            }
+        });
+    }
+
+    const uploadDropzone = document.getElementById('uploadDropzone');
+    const bulkFileInput = document.getElementById('bulkFileInput');
+
+    if (uploadDropzone && bulkFileInput) {
+        uploadDropzone.addEventListener('click', function() {
+            bulkFileInput.click();
+        });
+        
+        uploadDropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadDropzone.classList.add('dragover');
+        });
+        
+        uploadDropzone.addEventListener('dragleave', function() {
+            uploadDropzone.classList.remove('dragover');
+        });
+        
+        uploadDropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadDropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleSelectedFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        bulkFileInput.addEventListener('change', function() {
+            if (bulkFileInput.files.length > 0) {
+                handleSelectedFile(bulkFileInput.files[0]);
+            }
+        });
+    }
+
+    function handleSelectedFile(file) {
+        if (!file) return;
+        
+        const reader = new FileReader();
+        const previewLoading = document.getElementById('previewLoading');
+        const previewContainer = document.getElementById('previewContainer');
+        
+        if (previewLoading) previewLoading.style.display = 'block';
+        if (previewContainer) previewContainer.style.display = 'none';
+        
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                processParsedRows(rows);
+            } catch (err) {
+                console.error(err);
+                alert("Error parsing Excel file. Please ensure it is a valid template.");
+                if (previewLoading) previewLoading.style.display = 'none';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function processParsedRows(rows) {
+        const validLoans = [];
+        const invalidLoans = [];
+        
+        rows.forEach((row, index) => {
+            const norm = {};
+            for (let k in row) {
+                norm[k.toString().trim()] = row[k];
+            }
+            
+            const loanId = norm["Loan ID"] !== undefined ? norm["Loan ID"].toString().trim() : "";
+            if (!loanId && Object.values(norm).every(v => v === "")) {
+                return;
+            }
+            
+            const loanName = norm["Loan Name"] !== undefined ? norm["Loan Name"].toString().trim() : "";
+            const category = norm["Category"] !== undefined ? norm["Category"].toString().trim() : "";
+            const bankName = norm["Bank Name"] !== undefined ? norm["Bank Name"].toString().trim() : "";
+            const loanAmount = norm["Loan Amount"];
+            const customEmi = norm["Revised EMI"];
+            const interestRate = norm["Interest Rate"];
+            const downPayment = norm["Down Payment"];
+            const startDate = norm["Start Date"];
+            const tenure = norm["Tenure"];
+            const tenureUnit = norm["Tenure Unit"] !== undefined ? norm["Tenure Unit"].toString().trim() : "";
+            const balloonDate = norm["Balloon Date"];
+            const balloonAmount = norm["Balloon Amount"];
+            const notes = norm["Notes"] !== undefined ? norm["Notes"].toString().trim() : "";
+            
+            const missing = [];
+            if (loanAmount === undefined || loanAmount === null || loanAmount === "" || parseFloat(loanAmount) <= 0) {
+                missing.push("Loan Amount");
+            }
+            if (interestRate === undefined || interestRate === null || interestRate === "" || parseFloat(interestRate) < 0) {
+                missing.push("Interest Rate");
+            }
+            if (tenure === undefined || tenure === null || tenure === "" || parseFloat(tenure) <= 0) {
+                missing.push("Tenure");
+            }
+            if (!startDate || startDate.toString().trim() === "") {
+                missing.push("Start Date");
+            }
+            
+            const rowNum = index + 2;
+            
+            if (missing.length > 0) {
+                invalidLoans.push({
+                    rowNum: rowNum,
+                    loanId: loanId || `Row ${rowNum}`,
+                    loanName: loanName || "—",
+                    missingFields: missing.join(", ")
+                });
+            } else {
+                const formatDate = (val) => {
+                    if (!val) return "";
+                    if (val instanceof Date) {
+                        const y = val.getFullYear();
+                        const m = String(val.getMonth() + 1).padStart(2, '0');
+                        const d = String(val.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    }
+                    return val.toString().trim();
+                };
+                
+                validLoans.push({
+                    loan_id: loanId || `BULK_${Date.now()}_${index}`,
+                    loan_name: loanName || `Bulk Loan ${index + 1}`,
+                    loan_category: category || "Personal",
+                    bank_name: bankName || "Other",
+                    loan_amount: parseFloat(loanAmount),
+                    custom_emi: customEmi !== "" ? parseFloat(customEmi) : null,
+                    interest_rate: parseFloat(interestRate),
+                    down_payment: downPayment !== "" ? parseFloat(downPayment) : 0,
+                    start_date: formatDate(startDate),
+                    tenure_months: parseFloat(tenure),
+                    tenure_unit: tenureUnit || "months",
+                    balloon_date: formatDate(balloonDate),
+                    balloon_amount: balloonAmount !== "" ? parseFloat(balloonAmount) : null,
+                    notes: notes
+                });
+            }
+        });
+        
+        parsedLoansData = validLoans;
+        
+        const previewLoading = document.getElementById('previewLoading');
+        const previewContainer = document.getElementById('previewContainer');
+        
+        if (previewLoading) previewLoading.style.display = 'none';
+        if (previewContainer) previewContainer.style.display = 'block';
+        
+        const validRowsTbody = document.getElementById('validRowsTbody');
+        const validCount = document.getElementById('validCount');
+        
+        validRowsTbody.innerHTML = '';
+        validCount.textContent = validLoans.length;
+        
+        if (validLoans.length > 0) {
+            validLoans.forEach(loan => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${loan.loan_id}</strong></td>
+                    <td>${loan.loan_name}</td>
+                    <td><span class="badge Active" style="font-size:10px;padding:1px 6px;">${loan.loan_category}</span></td>
+                    <td>${loan.bank_name}</td>
+                    <td class="num">${formatCurrency(loan.loan_amount)}</td>
+                    <td class="num">${loan.interest_rate}%</td>
+                    <td>${loan.tenure_months} ${loan.tenure_unit}</td>
+                    <td>${loan.start_date}</td>
+                `;
+                validRowsTbody.appendChild(tr);
+            });
+            confirmBulkBtn.removeAttribute('disabled');
+        } else {
+            validRowsTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--slate-400)">No valid loans found in file.</td></tr>';
+            confirmBulkBtn.setAttribute('disabled', 'true');
+        }
+        
+        const warningContainer = document.getElementById('warningContainer');
+        const invalidRowsTbody = document.getElementById('invalidRowsTbody');
+        const invalidCount = document.getElementById('invalidCount');
+        
+        invalidRowsTbody.innerHTML = '';
+        invalidCount.textContent = invalidLoans.length;
+        
+        if (invalidLoans.length > 0) {
+            warningContainer.style.display = 'block';
+            invalidLoans.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item.rowNum}</strong></td>
+                    <td>${item.loanId}</td>
+                    <td>${item.loanName}</td>
+                    <td style="color:var(--danger);font-weight:500;">${item.missingFields}</td>
+                `;
+                invalidRowsTbody.appendChild(tr);
+            });
+        } else {
+            warningContainer.style.display = 'none';
+        }
+        
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    function resetBulkUpload() {
+        parsedLoansData = [];
+        if (bulkFileInput) bulkFileInput.value = '';
+        const previewContainer = document.getElementById('previewContainer');
+        const previewLoading = document.getElementById('previewLoading');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (previewLoading) previewLoading.style.display = 'none';
+        if (confirmBulkBtn) confirmBulkBtn.setAttribute('disabled', 'true');
+    }
+
+    if (confirmBulkBtn) {
+        confirmBulkBtn.addEventListener('click', async function() {
+            if (parsedLoansData.length === 0) return;
+            
+            const origText = confirmBulkBtn.innerHTML;
+            confirmBulkBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:1.5px;border-top-color:#fff;"></div> Submitting...';
+            confirmBulkBtn.setAttribute('disabled', 'true');
+            
+            try {
+                const csrfToken = "{{ csrf_token() }}";
+                const res = await fetch('/loans/bulk-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(parsedLoansData)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    window.location.reload();
+                } else {
+                    alert("Upload failed: " + (result.message || "Unknown error"));
+                    confirmBulkBtn.innerHTML = origText;
+                    confirmBulkBtn.removeAttribute('disabled');
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error submitting data to server.");
+                confirmBulkBtn.innerHTML = origText;
+                confirmBulkBtn.removeAttribute('disabled');
+            }
+        });
+    }
+
+    // Template Downloader
+    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+    if (downloadTemplateBtn) {
+        downloadTemplateBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            const origHTML = downloadTemplateBtn.innerHTML;
+            downloadTemplateBtn.innerHTML = '<i class="spinner" style="width:12px;height:12px;border-width:1.5px;border-top-color:var(--slate-700);margin-right:8px;vertical-align:middle;"></i>Downloading...';
+            
+            try {
+                const res = await fetch('/loans/active-loans-data');
+                const result = await res.json();
+                
+                const headers = [
+                    "Loan ID", "Loan Name", "Category", "Bank Name", "Loan Amount",
+                    "Revised EMI", "Interest Rate", "Down Payment", "Start Date",
+                    "Tenure", "Tenure Unit", "Balloon Date", "Balloon Amount", "Notes"
+                ];
+                
+                let sheetData = [];
+                if (result.success && result.loans && result.loans.length > 0) {
+                    sheetData = result.loans.map(l => ({
+                        "Loan ID": l.loan_id,
+                        "Loan Name": l.loan_name,
+                        "Category": l.loan_category,
+                        "Bank Name": l.bank_name,
+                        "Loan Amount": l.loan_amount,
+                        "Revised EMI": l.custom_emi,
+                        "Interest Rate": l.interest_rate,
+                        "Down Payment": l.down_payment,
+                        "Start Date": l.start_date,
+                        "Tenure": l.tenure_months,
+                        "Tenure Unit": l.tenure_unit,
+                        "Balloon Date": l.balloon_date,
+                        "Balloon Amount": l.balloon_amount,
+                        "Notes": l.notes
+                    }));
+                } else {
+                    sheetData = [
+                        {
+                            "Loan ID": "HOME001",
+                            "Loan Name": "Apartment Loan",
+                            "Category": "Home",
+                            "Bank Name": "SBI",
+                            "Loan Amount": 5000000,
+                            "Revised EMI": "",
+                            "Interest Rate": 8.5,
+                            "Down Payment": 1000000,
+                            "Start Date": "2026-06-01",
+                            "Tenure": 20,
+                            "Tenure Unit": "years",
+                            "Balloon Date": "",
+                            "Balloon Amount": "",
+                            "Notes": "Sample home loan"
+                        }
+                    ];
+                }
+
+                const ws = XLSX.utils.json_to_sheet(sheetData, { header: headers });
+                
+                ws['!cols'] = [
+                    { wch: 15 }, // Loan ID
+                    { wch: 20 }, // Loan Name
+                    { wch: 15 }, // Category
+                    { wch: 15 }, // Bank Name
+                    { wch: 15 }, // Loan Amount
+                    { wch: 15 }, // Revised EMI
+                    { wch: 15 }, // Interest Rate
+                    { wch: 15 }, // Down Payment
+                    { wch: 15 }, // Start Date
+                    { wch: 10 }, // Tenure
+                    { wch: 12 }, // Tenure Unit
+                    { wch: 15 }, // Balloon Date
+                    { wch: 15 }, // Balloon Amount
+                    { wch: 25 }  // Notes
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Active Loans");
+                XLSX.writeFile(wb, "active_loans.xlsx");
+            } catch (err) {
+                console.error(err);
+                alert("Error fetching active loans to build template.");
+            } finally {
+                downloadTemplateBtn.innerHTML = origHTML;
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
