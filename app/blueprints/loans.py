@@ -460,3 +460,28 @@ def bulk_upload():
         "skipped": skipped_count
     }
 
+
+@loans_bp.route("/active-loans-data", methods=["GET"])
+@login_required
+def active_loans_data():
+    loans = Loan.query.filter_by(user_id=current_user.id, is_archived=False).filter(Loan.loan_status != 'Completed').all()
+    res = []
+    for l in loans:
+        res.append({
+            "loan_id": l.loan_id,
+            "loan_name": l.loan_name,
+            "loan_category": l.loan_category,
+            "bank_name": l.bank_name,
+            "loan_amount": l.loan_amount,
+            "custom_emi": l.custom_emi if l.custom_emi else "",
+            "interest_rate": l.interest_rate,
+            "down_payment": l.down_payment or 0,
+            "start_date": l.start_date.strftime("%Y-%m-%d") if l.start_date else "",
+            "tenure_months": l.tenure_months,
+            "tenure_unit": "months",
+            "balloon_date": l.balloon_date.strftime("%Y-%m-%d") if l.balloon_date else "",
+            "balloon_amount": l.balloon_amount if l.balloon_amount else "",
+            "notes": l.notes or ""
+        })
+    return {"success": True, "loans": res}
+

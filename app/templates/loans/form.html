@@ -1055,71 +1055,90 @@ document.addEventListener('DOMContentLoaded', function() {
     // Template Downloader
     const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
     if (downloadTemplateBtn) {
-        downloadTemplateBtn.addEventListener('click', function(e) {
+        downloadTemplateBtn.addEventListener('click', async function(e) {
             e.preventDefault();
-            const headers = [
-                "Loan ID", "Loan Name", "Category", "Bank Name", "Loan Amount",
-                "Revised EMI", "Interest Rate", "Down Payment", "Start Date",
-                "Tenure", "Tenure Unit", "Balloon Date", "Balloon Amount", "Notes"
-            ];
             
-            const sampleData = [
-                {
-                    "Loan ID": "HOME001",
-                    "Loan Name": "Apartment Loan",
-                    "Category": "Home",
-                    "Bank Name": "SBI",
-                    "Loan Amount": 5000000,
-                    "Revised EMI": "",
-                    "Interest Rate": 8.5,
-                    "Down Payment": 1000000,
-                    "Start Date": "2026-06-01",
-                    "Tenure": 20,
-                    "Tenure Unit": "years",
-                    "Balloon Date": "",
-                    "Balloon Amount": "",
-                    "Notes": "Sample home loan"
-                },
-                {
-                    "Loan ID": "AUTO002",
-                    "Loan Name": "Car Loan",
-                    "Category": "Auto",
-                    "Bank Name": "HDFC",
-                    "Loan Amount": 1200000,
-                    "Revised EMI": "",
-                    "Interest Rate": 9.2,
-                    "Down Payment": 200000,
-                    "Start Date": "2026-06-15",
-                    "Tenure": 60,
-                    "Tenure Unit": "months",
-                    "Balloon Date": "",
-                    "Balloon Amount": "",
-                    "Notes": "Car loan notes"
+            const origHTML = downloadTemplateBtn.innerHTML;
+            downloadTemplateBtn.innerHTML = '<i class="spinner" style="width:12px;height:12px;border-width:1.5px;border-top-color:var(--slate-700);margin-right:8px;vertical-align:middle;"></i>Downloading...';
+            
+            try {
+                const res = await fetch('/loans/active-loans-data');
+                const result = await res.json();
+                
+                const headers = [
+                    "Loan ID", "Loan Name", "Category", "Bank Name", "Loan Amount",
+                    "Revised EMI", "Interest Rate", "Down Payment", "Start Date",
+                    "Tenure", "Tenure Unit", "Balloon Date", "Balloon Amount", "Notes"
+                ];
+                
+                let sheetData = [];
+                if (result.success && result.loans && result.loans.length > 0) {
+                    sheetData = result.loans.map(l => ({
+                        "Loan ID": l.loan_id,
+                        "Loan Name": l.loan_name,
+                        "Category": l.loan_category,
+                        "Bank Name": l.bank_name,
+                        "Loan Amount": l.loan_amount,
+                        "Revised EMI": l.custom_emi,
+                        "Interest Rate": l.interest_rate,
+                        "Down Payment": l.down_payment,
+                        "Start Date": l.start_date,
+                        "Tenure": l.tenure_months,
+                        "Tenure Unit": l.tenure_unit,
+                        "Balloon Date": l.balloon_date,
+                        "Balloon Amount": l.balloon_amount,
+                        "Notes": l.notes
+                    }));
+                } else {
+                    // Fallback to sample data if no active loans exist
+                    sheetData = [
+                        {
+                            "Loan ID": "HOME001",
+                            "Loan Name": "Apartment Loan",
+                            "Category": "Home",
+                            "Bank Name": "SBI",
+                            "Loan Amount": 5000000,
+                            "Revised EMI": "",
+                            "Interest Rate": 8.5,
+                            "Down Payment": 1000000,
+                            "Start Date": "2026-06-01",
+                            "Tenure": 20,
+                            "Tenure Unit": "years",
+                            "Balloon Date": "",
+                            "Balloon Amount": "",
+                            "Notes": "Sample home loan"
+                        }
+                    ];
                 }
-            ];
 
-            const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
-            
-            ws['!cols'] = [
-                { wch: 15 }, // Loan ID
-                { wch: 20 }, // Loan Name
-                { wch: 15 }, // Category
-                { wch: 15 }, // Bank Name
-                { wch: 15 }, // Loan Amount
-                { wch: 15 }, // Revised EMI
-                { wch: 15 }, // Interest Rate
-                { wch: 15 }, // Down Payment
-                { wch: 15 }, // Start Date
-                { wch: 10 }, // Tenure
-                { wch: 12 }, // Tenure Unit
-                { wch: 15 }, // Balloon Date
-                { wch: 15 }, // Balloon Amount
-                { wch: 25 }  // Notes
-            ];
+                const ws = XLSX.utils.json_to_sheet(sheetData, { header: headers });
+                
+                ws['!cols'] = [
+                    { wch: 15 }, // Loan ID
+                    { wch: 20 }, // Loan Name
+                    { wch: 15 }, // Category
+                    { wch: 15 }, // Bank Name
+                    { wch: 15 }, // Loan Amount
+                    { wch: 15 }, // Revised EMI
+                    { wch: 15 }, // Interest Rate
+                    { wch: 15 }, // Down Payment
+                    { wch: 15 }, // Start Date
+                    { wch: 10 }, // Tenure
+                    { wch: 12 }, // Tenure Unit
+                    { wch: 15 }, // Balloon Date
+                    { wch: 15 }, // Balloon Amount
+                    { wch: 25 }  // Notes
+                ];
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Loans Template");
-            XLSX.writeFile(wb, "loans_template.xlsx");
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Active Loans");
+                XLSX.writeFile(wb, "active_loans.xlsx");
+            } catch (err) {
+                console.error(err);
+                alert("Error fetching active loans to build template.");
+            } finally {
+                downloadTemplateBtn.innerHTML = origHTML;
+            }
         });
     }
 });
