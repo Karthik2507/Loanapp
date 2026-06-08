@@ -3,9 +3,118 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import Loan, Schedule, ActivityLog, LoanAuditLog, BalloonPayment
 from app.forms import LoanForm
-from app.utils import generate_amortization, update_loan_progress
+from app.utils import generate_amortization, update_loan_progress, emi_amount
 
 loans_bp = Blueprint("loans", __name__, url_prefix="/loans")
+
+
+def recalculate_unpaid_schedules(loan):
+    from app.models import Schedule, BalloonPayment
+    from dateutil.relativedelta import relativedelta
+    from datetime import date
+    
+    paid_schedules = Schedule.query.filter_by(loan_id=loan.id, payment_status='Paid').all()
+    if not paid_schedules:
+        Schedule.query.filter_by(loan_id=loan.id).delete()
+        db.session.flush()
+        
+        rows = generate_amortization(loan)
+        for r in rows:
+            db.session.add(Schedule(loan_id=loan.id, **r))
+            
+        BalloonPayment.query.filter_by(loan_id=loan.id).delete()
+        if loan.balloon_date and loan.balloon_amount:
+            db.session.add(BalloonPayment(loan_id=loan.id, due_date=loan.balloon_date, amount=loan.balloon_amount))
+            
+        update_loan_progress(loan)
+        return
+        
+    paid_count = len(paid_schedules)
+    last_paid = max(paid_schedules, key=lambda s: s.month_index)
+    remaining_principal = last_paid.remaining_balance
+    start_idx = last_paid.month_index
+    start_date = last_paid.payment_date
+    
+    unpaid_count = max(loan.tenure_months - paid_count, 1)
+    
+    if loan.custom_emi:
+        emi = float(loan.custom_emi)
+    else:
+        emi = emi_amount(remaining_principal, loan.interest_rate, unpaid_count)
+        
+    Schedule.query.filter((Schedule.loan_id == loan.id) & (Schedule.payment_status != 'Paid')).delete()
+    db.session.flush()
+    
+    monthly_rate = (loan.interest_rate / 100.0) / 12.0
+    rem = remaining_principal
+    
+    for i in range(1, unpaid_count + 1):
+        pay_date = start_date + relativedelta(months=i)
+        interest = max(round(rem * monthly_rate, 2), 0.0)
+        principal_component = round(emi - interest, 2)
+        
+        if loan.balloon_date and pay_date >= loan.balloon_date:
+            principal_component = round(rem, 2)
+            emi_row = round(principal_component + interest, 2)
+            rem = 0.0
+            db.session.add(Schedule(
+                loan_id=loan.id,
+                month_index=start_idx + i,
+                payment_date=pay_date,
+                emi=emi_row,
+                principal=principal_component,
+                interest=interest,
+                remaining_balance=0.0,
+                payment_status="Pending",
+                is_balloon=True,
+                is_revised=True
+            ))
+            break
+
+        if principal_component >= rem or i == unpaid_count:
+            principal_component = round(rem, 2)
+            emi_row = round(principal_component + interest, 2)
+            rem = 0.0
+            db.session.add(Schedule(
+                loan_id=loan.id,
+                month_index=start_idx + i,
+                payment_date=pay_date,
+                emi=emi_row,
+                principal=principal_component,
+                interest=interest,
+                remaining_balance=0.0,
+                payment_status="Pending",
+                is_balloon=False,
+                is_revised=True
+            ))
+            break
+
+        rem = round(rem - principal_component, 2)
+        db.session.add(Schedule(
+            loan_id=loan.id,
+            month_index=start_idx + i,
+            payment_date=pay_date,
+            emi=emi,
+            principal=principal_component,
+            interest=interest,
+            remaining_balance=max(rem, 0.0),
+            payment_status="Pending",
+            is_balloon=False,
+            is_revised=True
+        ))
+        
+    if loan.balloon_date and loan.balloon_amount:
+        bp = BalloonPayment.query.filter_by(loan_id=loan.id).first()
+        if bp:
+            if not bp.paid:
+                bp.due_date = loan.balloon_date
+                bp.amount = loan.balloon_amount
+        else:
+            db.session.add(BalloonPayment(loan_id=loan.id, due_date=loan.balloon_date, amount=loan.balloon_amount))
+    else:
+        BalloonPayment.query.filter_by(loan_id=loan.id, paid=False).delete()
+        
+    update_loan_progress(loan)
 
 
 def _get_loan_or_404(loan_pk):
@@ -159,3 +268,195 @@ def close(loan_pk):
     db.session.commit()
     flash("Loan closed.", "success")
     return redirect(url_for("loans.details", loan_pk=loan.id))
+
+
+@loans_bp.route("/bulk-upload", methods=["POST"])
+@login_required
+def bulk_upload():
+    from datetime import datetime, date
+    
+    data = request.get_json()
+    if not data or not isinstance(data, list):
+        return {"success": False, "message": "Invalid payload format."}, 400
+        
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    
+    def parse_date(date_str):
+        if not date_str:
+            return None
+        if isinstance(date_str, date):
+            return date_str
+        try:
+            return datetime.strptime(date_str.split('T')[0], "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                return datetime.strptime(date_str, "%d/%m/%Y").date()
+            except ValueError:
+                try:
+                    return datetime.strptime(date_str, "%m/%d/%Y").date()
+                except ValueError:
+                    return None
+
+    def check_if_same(loan, row):
+        def float_eq(v1, v2):
+            f1 = float(v1) if v1 is not None else 0.0
+            f2 = float(v2) if v2 is not None and str(v2).strip() != "" else 0.0
+            return abs(f1 - f2) < 0.001
+
+        def date_eq(d1, d2):
+            if not d1 and not d2:
+                return True
+            if not d1 or not d2:
+                return False
+            p1 = parse_date(d1) if isinstance(d1, str) else d1
+            p2 = parse_date(d2) if isinstance(d2, str) else d2
+            return p1 == p2
+
+        if (loan.loan_name or "").strip() != (row.get("loan_name") or "").strip():
+            return False
+        if (loan.loan_category or "").strip() != (row.get("loan_category") or "").strip():
+            return False
+        if (loan.bank_name or "").strip() != (row.get("bank_name") or "").strip():
+            return False
+        if (loan.notes or "").strip() != (row.get("notes") or "").strip():
+            return False
+
+        if not float_eq(loan.loan_amount, row.get("loan_amount")):
+            return False
+        if not float_eq(loan.interest_rate, row.get("interest_rate")):
+            return False
+        if not float_eq(loan.down_payment, row.get("down_payment")):
+            return False
+        if not float_eq(loan.custom_emi, row.get("custom_emi")):
+            return False
+        if not float_eq(loan.balloon_amount, row.get("balloon_amount")):
+            return False
+
+        if not date_eq(loan.start_date, row.get("start_date")):
+            return False
+        if not date_eq(loan.balloon_date, row.get("balloon_date")):
+            return False
+
+        tenure_val = float(row.get("tenure_months") or 0)
+        tenure_unit = (row.get("tenure_unit") or "months").strip().lower()
+        uploaded_tenure_months = int(round(tenure_val * 12)) if tenure_unit == "years" else int(tenure_val)
+        if loan.tenure_months != uploaded_tenure_months:
+            return False
+
+        return True
+
+    for row in data:
+        loan_id = str(row.get("loan_id", "")).strip()
+        if not loan_id:
+            continue
+            
+        existing_loan = Loan.query.filter_by(user_id=current_user.id, loan_id=loan_id).first()
+        
+        loan_name = str(row.get("loan_name") or f"Loan {loan_id}").strip()
+        loan_category = str(row.get("loan_category") or "Personal").strip()
+        valid_cats = ["Home", "Auto", "Personal", "Education", "Business", "Gold", "Other"]
+        if loan_category not in valid_cats:
+            loan_category = "Personal"
+            
+        bank_name = str(row.get("bank_name") or "Other").strip()
+        loan_amount = float(row.get("loan_amount") or 0)
+        interest_rate = float(row.get("interest_rate") or 0)
+        down_payment = float(row.get("down_payment") or 0)
+        custom_emi = row.get("custom_emi")
+        custom_emi = float(custom_emi) if custom_emi is not None and str(custom_emi).strip() != "" else None
+        
+        tenure_val = float(row.get("tenure_months") or 0)
+        tenure_unit = str(row.get("tenure_unit") or "months").strip().lower()
+        tenure_months = int(round(tenure_val * 12)) if tenure_unit == "years" else int(tenure_val)
+        
+        start_date = parse_date(row.get("start_date"))
+        balloon_date = parse_date(row.get("balloon_date"))
+        balloon_amount = row.get("balloon_amount")
+        balloon_amount = float(balloon_amount) if balloon_amount is not None and str(balloon_amount).strip() != "" else None
+        
+        notes = str(row.get("notes") or "").strip()
+        
+        if not start_date or tenure_months <= 0 or interest_rate < 0 or loan_amount <= 0:
+            continue
+            
+        if existing_loan:
+            if check_if_same(existing_loan, row):
+                skipped_count += 1
+                continue
+                
+            for field, old, new in [
+                ("loan_name", existing_loan.loan_name, loan_name),
+                ("loan_category", existing_loan.loan_category, loan_category),
+                ("bank_name", existing_loan.bank_name, bank_name),
+                ("loan_amount", existing_loan.loan_amount, loan_amount),
+                ("interest_rate", existing_loan.interest_rate, interest_rate),
+                ("down_payment", existing_loan.down_payment, down_payment),
+                ("custom_emi", existing_loan.custom_emi, custom_emi),
+                ("start_date", existing_loan.start_date, start_date),
+                ("tenure_months", existing_loan.tenure_months, tenure_months),
+                ("balloon_date", existing_loan.balloon_date, balloon_date),
+                ("balloon_amount", existing_loan.balloon_amount, balloon_amount),
+                ("notes", existing_loan.notes, notes)
+            ]:
+                if old != new:
+                    db.session.add(LoanAuditLog(loan_id=existing_loan.id, field=field, old_value=str(old), new_value=str(new)))
+            
+            existing_loan.loan_name = loan_name
+            existing_loan.loan_category = loan_category
+            existing_loan.bank_name = bank_name
+            existing_loan.loan_amount = loan_amount
+            existing_loan.interest_rate = interest_rate
+            existing_loan.down_payment = down_payment
+            existing_loan.custom_emi = custom_emi
+            existing_loan.start_date = start_date
+            existing_loan.tenure_months = tenure_months
+            existing_loan.balloon_date = balloon_date
+            existing_loan.balloon_amount = balloon_amount
+            existing_loan.notes = notes
+            
+            db.session.flush()
+            recalculate_unpaid_schedules(existing_loan)
+            
+            db.session.add(ActivityLog(user_id=current_user.id, loan_id=existing_loan.id, action="EDIT_LOAN", detail="Bulk load update"))
+            updated_count += 1
+        else:
+            loan = Loan(
+                user_id=current_user.id,
+                loan_id=loan_id,
+                loan_name=loan_name,
+                loan_category=loan_category,
+                bank_name=bank_name,
+                loan_amount=loan_amount,
+                interest_rate=interest_rate,
+                down_payment=down_payment,
+                custom_emi=custom_emi,
+                start_date=start_date,
+                tenure_months=tenure_months,
+                balloon_date=balloon_date,
+                balloon_amount=balloon_amount,
+                notes=notes
+            )
+            db.session.add(loan)
+            db.session.flush()
+            
+            rows_sch = generate_amortization(loan)
+            for r in rows_sch:
+                db.session.add(Schedule(loan_id=loan.id, **r))
+                
+            if loan.balloon_date and loan.balloon_amount:
+                db.session.add(BalloonPayment(loan_id=loan.id, due_date=loan.balloon_date, amount=loan.balloon_amount))
+                
+            update_loan_progress(loan)
+            db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="CREATE_LOAN", detail=f"{loan.loan_id} — {loan.loan_name} (Bulk load)"))
+            created_count += 1
+            
+    db.session.commit()
+    return {
+        "success": True,
+        "created": created_count,
+        "updated": updated_count,
+        "skipped": skipped_count
+    }
+
