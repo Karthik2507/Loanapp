@@ -35,9 +35,36 @@
   <div class="card-body">
     <form method="post" action="{{ url_for('settings.change_password') }}">
       {{ pwd_form.hidden_tag() }}
-      <div class="form-row"><label>Current password</label>{{ pwd_form.current_password() }}</div>
-      <div class="form-row"><label>New password</label>{{ pwd_form.new_password() }}</div>
-      <div class="form-row"><label>Confirm new password</label>{{ pwd_form.confirm() }}</div>
+      <div class="form-row">
+        <label>Current password</label>
+        <div class="password-input-wrapper">
+          {{ pwd_form.current_password() }}
+          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <i data-lucide="eye"></i>
+            <i data-lucide="eye-off"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>New password</label>
+        <div class="password-input-wrapper">
+          {{ pwd_form.new_password() }}
+          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <i data-lucide="eye"></i>
+            <i data-lucide="eye-off"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Confirm new password</label>
+        <div class="password-input-wrapper">
+          {{ pwd_form.confirm() }}
+          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+            <i data-lucide="eye"></i>
+            <i data-lucide="eye-off"></i>
+          </button>
+        </div>
+      </div>
       <button class="btn">Change password</button>
     </form>
   </div>

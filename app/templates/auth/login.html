@@ -19,7 +19,13 @@
         </div>
         <div class="form-row">
           <label>Password</label>
-          {{ form.password(placeholder="••••••••") }}
+          <div class="password-input-wrapper">
+            {{ form.password(placeholder="••••••••") }}
+            <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+              <i data-lucide="eye"></i>
+              <i data-lucide="eye-off"></i>
+            </button>
+          </div>
           {% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}
         </div>
         <div class="form-row" style="flex-direction:row;align-items:center;gap:8px">

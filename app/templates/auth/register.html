@@ -18,8 +18,28 @@
           <div class="form-row"><label>Email</label>{{ form.email() }}{% for e in form.email.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
         </div>
         <div class="form-grid">
-          <div class="form-row"><label>Password</label>{{ form.password() }}{% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
-          <div class="form-row"><label>Confirm</label>{{ form.confirm() }}{% for e in form.confirm.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+          <div class="form-row">
+            <label>Password</label>
+            <div class="password-input-wrapper">
+              {{ form.password() }}
+              <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
+            {% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="form-row">
+            <label>Confirm</label>
+            <div class="password-input-wrapper">
+              {{ form.confirm() }}
+              <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
+            {% for e in form.confirm.errors %}<div class="err">{{ e }}</div>{% endfor %}
+          </div>
         </div>
         <button class="btn" style="width:100%;justify-content:center" type="submit">Create account</button>
       </form>

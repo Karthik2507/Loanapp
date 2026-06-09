@@ -102,6 +102,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   attachPaymentHandlers();
+
+  // Password visibility toggle helper
+  document.addEventListener('click', e => {
+    const toggle = e.target.closest('.password-toggle');
+    if (!toggle) return;
+    
+    e.preventDefault();
+    const wrapper = toggle.closest('.password-input-wrapper');
+    if (!wrapper) return;
+    
+    const input = wrapper.querySelector('input');
+    if (!input) return;
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      wrapper.classList.add('show-password');
+    } else {
+      input.type = 'password';
+      wrapper.classList.remove('show-password');
+    }
+  });
 });
 
 function openConfirm(msg, onYes) {
