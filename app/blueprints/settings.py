@@ -10,8 +10,15 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 @settings_bp.route("/", methods=["GET", "POST"])
 @login_required
 def index():
+    from app.models import Setting
     profile_form = ProfileForm(obj=current_user)
     pref_form = PreferencesForm(obj=current_user)
+    
+    # Populate API key from Setting table
+    api_key_setting = Setting.query.filter_by(user_id=current_user.id, key="gemini_api_key").first()
+    if api_key_setting:
+        pref_form.gemini_api_key.data = api_key_setting.value
+        
     pwd_form = ChangePasswordForm()
     return render_template("settings/index.html",
                            profile_form=profile_form, pref_form=pref_form, pwd_form=pwd_form)
@@ -41,10 +48,23 @@ def update_profile():
 @settings_bp.route("/preferences", methods=["POST"])
 @login_required
 def update_preferences():
+    from app.models import Setting
     form = PreferencesForm()
     if form.validate_on_submit():
         current_user.preferred_currency = form.preferred_currency.data
         current_user.preferred_date_format = form.preferred_date_format.data
+        
+        # Save or update Gemini API key in Setting table
+        api_key_setting = Setting.query.filter_by(user_id=current_user.id, key="gemini_api_key").first()
+        new_key_value = form.gemini_api_key.data.strip() if form.gemini_api_key.data else ""
+        if api_key_setting:
+            if new_key_value:
+                api_key_setting.value = new_key_value
+            else:
+                db.session.delete(api_key_setting)
+        elif new_key_value:
+            db.session.add(Setting(user_id=current_user.id, key="gemini_api_key", value=new_key_value))
+            
         db.session.commit()
         flash("Preferences saved.", "success")
     return redirect(url_for("settings.index"))

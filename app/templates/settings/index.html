@@ -24,6 +24,16 @@
         {{ pref_form.hidden_tag() }}
         <div class="form-row"><label>Currency</label>{{ pref_form.preferred_currency() }}</div>
         <div class="form-row"><label>Date format</label>{{ pref_form.preferred_date_format() }}</div>
+        <div class="form-row">
+          <label>Gemini API Key</label>
+          <div class="password-input-wrapper">
+            {{ pref_form.gemini_api_key(placeholder="API Key for AI chatbot (optional)", type="password") }}
+            <button type="button" class="password-toggle" aria-label="Toggle API Key visibility">
+              <i data-lucide="eye"></i>
+              <i data-lucide="eye-off"></i>
+            </button>
+          </div>
+        </div>
         <button class="btn">Save preferences</button>
       </form>
     </div>

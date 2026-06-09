@@ -1,0 +1,23 @@
+# Flask & SQLite
+instance/
+*.sqlite3
+
+# Local Environment Variables
+.env
+
+# Python Cache & Build
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+
+# IDE / Gemini agent directories
+.gemini/
+.idea/
+.vscode/

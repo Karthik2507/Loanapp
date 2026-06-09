@@ -34,6 +34,7 @@ def create_app():
     from app.blueprints.reports import reports_bp
     from app.blueprints.settings import settings_bp
     from app.blueprints.api import api_bp
+    from app.blueprints.chatbot import chatbot_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -43,6 +44,7 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(chatbot_bp)
 
     from app.utils import format_currency, format_date
     app.jinja_env.filters["money"] = format_currency

@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}LoanLedger{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
@@ -23,6 +25,53 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  <!-- Chatbot Widget -->
+  <button class="chatbot-launcher" id="chatbotLauncher" title="Open Assistant">
+    <i data-lucide="message-square"></i>
+  </button>
+  
+  <div class="chatbot-window" id="chatbotWindow">
+    <div class="chatbot-header">
+      <h3><span></span> LoanLedger Assistant</h3>
+      <button class="chatbot-close" id="chatbotClose" title="Minimize">
+        <i data-lucide="minus"></i>
+      </button>
+    </div>
+    
+    <!-- Help Popover -->
+    <div class="chatbot-help-popover" id="chatbotHelpPopover">
+      <h4>Chat Command Formats</h4>
+      <div class="help-section">
+        <strong>Create Loan:</strong>
+        <p>"Create a car loan with amount 25000, interest 5%, tenure 36 months, starting 2026-07-01"</p>
+        <small>Note: If you don't mention a Loan ID, the assistant will generate one automatically.</small>
+      </div>
+      <div class="help-section">
+        <strong>Update Interest Rate:</strong>
+        <p>"Change interest rate of auto-123 to 4.5%"</p>
+      </div>
+      <div class="help-section">
+        <strong>Update Tenure:</strong>
+        <p>"Change tenure of auto-123 to 48 months"</p>
+      </div>
+      <div class="help-section">
+        <strong>Update Details:</strong>
+        <p>"Update bank for auto-123 to SBI" or "Update notes for auto-123 to 'refinanced'"</p>
+      </div>
+    </div>
+
+    <div class="chatbot-messages" id="chatbotMessages"></div>
+    <form class="chatbot-input-area" id="chatbotForm">
+      <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Ask about your loans..." autocomplete="off">
+      <button type="button" class="chatbot-help-btn" id="chatbotHelpBtn" title="Help Guide">
+        <i data-lucide="help-circle"></i>
+      </button>
+      <button type="submit" class="chatbot-send" title="Send message">
+        <i data-lucide="send"></i>
+      </button>
+    </form>
+  </div>
 </div>
 {% else %}
   {% block auth_content %}{% endblock %}
@@ -35,6 +84,9 @@
   {% endfor %}
 {% endwith %}
 </div>
+{% if current_user.is_authenticated %}
+  <script src="{{ url_for('static', filename='js/chatbot.js') }}" defer></script>
+{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>
