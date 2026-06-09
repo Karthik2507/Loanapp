@@ -70,6 +70,7 @@ class RecalcForm(FlaskForm):
         ("RATE", "Interest Rate Change"),
         ("TENURE", "Tenure Change"),
         ("EXTRA", "Extra Monthly Payment"),
+        ("CLEAR_BALLOON", "Clear Balloon date"),
     ])
     new_rate = FloatField("New Rate (%)", validators=[Optional(), NumberRange(min=0, max=100)])
     new_tenure = IntegerField("New Tenure (months)", validators=[Optional(), NumberRange(min=1, max=600)])

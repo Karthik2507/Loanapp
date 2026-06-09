@@ -22,6 +22,14 @@ def index():
     selected_id = request.args.get("loan_pk", type=int)
     loan = _get_loan(selected_id) if selected_id else (loans[0] if loans else None)
     form = RecalcForm()
+    choices = [
+        ("RATE", "Interest Rate Change"),
+        ("TENURE", "Tenure Change"),
+        ("EXTRA", "Extra Monthly Payment"),
+    ]
+    if loan and loan.balloon_date:
+        choices.append(("CLEAR_BALLOON", "Clear Balloon date"))
+    form.recalc_type.choices = choices
     simulation = None
     if loan and form.validate_on_submit():
         rtype = form.recalc_type.data
@@ -105,6 +113,13 @@ def index():
         elif rtype == "LUMPSUM" and form.extra_amount.data:
             recalc_with_lumpsum(loan, form.extra_amount.data)
             summary = f"Lump-sum {form.extra_amount.data} applied"
+        elif rtype == "CLEAR_BALLOON":
+            from app.blueprints.loans import recalculate_unpaid_schedules
+            loan.balloon_date = None
+            loan.balloon_amount = None
+            db.session.flush()
+            recalculate_unpaid_schedules(loan)
+            summary = "Balloon date cleared"
         elif rtype == "PAYOFF":
             simulation = {"payoff_today": loan.remaining_balance}
             summary = f"Simulated early payoff = {loan.remaining_balance:.2f}"

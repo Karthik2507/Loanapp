@@ -810,13 +810,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Optional balloon
         const balloonDate = document.getElementById('balloon_date').value;
         const balloonAmount = parseFloat(document.getElementById('balloon_amount').value || 0);
-        if (balloonDate && balloonAmount > 0) {
+        if (balloonDate) {
             setVal('val_balloon_date', balloonDate);
-            setVal('val_balloon_amount', formatMoney(balloonAmount));
             toggleRow('lbl_balloon_date', 'val_balloon_date', true);
-            toggleRow('lbl_balloon_amount', 'val_balloon_amount', true);
         } else {
             toggleRow('lbl_balloon_date', 'val_balloon_date', false);
+        }
+        if (balloonAmount > 0) {
+            setVal('val_balloon_amount', formatMoney(balloonAmount));
+            toggleRow('lbl_balloon_amount', 'val_balloon_amount', true);
+        } else {
             toggleRow('lbl_balloon_amount', 'val_balloon_amount', false);
         }
         
