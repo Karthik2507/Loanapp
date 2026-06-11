@@ -1,6 +1,7 @@
 # Flask & SQLite
 instance/
 *.sqlite3
+*.sql
 
 # Local Environment Variables
 .env
