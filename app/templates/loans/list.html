@@ -204,9 +204,9 @@ html.dark .modal-overlay {
   </div>
 </div>
 
-<form class="filters" method="get">
-  <input type="text" name="q" value="{{ q }}" placeholder="Search by ID, name, bank…">
-  <select name="status">
+<form class="filters" id="filtersForm" method="get">
+  <input type="text" id="filterSearch" name="q" value="{{ q }}" placeholder="Search by ID, name, bank…">
+  <select id="filterStatus" name="status">
     <option value="">All statuses</option>
     {% for s in ['Active','Completed','Overdue','Balloon Pending'] %}
       <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
@@ -215,53 +215,62 @@ html.dark .modal-overlay {
   <button class="btn secondary sm" type="submit"><i data-lucide="filter"></i> Apply</button>
 </form>
 
-<div class="card">
-  <div class="table-wrap">
-  {% if pagination.items %}
-    <table class="tbl">
-      <thead><tr>
-        <th>Loan ID</th><th>Name</th><th>Bank</th><th>Category</th>
-        <th class="num">Amount</th><th class="num">Rate</th><th class="num">Remaining</th>
-        <th>Progress</th><th>Status</th><th></th>
-      </tr></thead>
-      <tbody>
-      {% for l in pagination.items %}
-        <tr>
-          <td><strong>{{ l.loan_id }}</strong></td>
-          <td><a href="{{ url_for('loans.details', loan_pk=l.id) }}">{{ l.loan_name }}</a></td>
-          <td>{{ l.bank_name }}</td>
-          <td>{{ l.loan_category }}</td>
-          <td class="num">{{ l.loan_amount|money }}</td>
-          <td class="num">{{ '%.2f'|format(l.interest_rate) }}%</td>
-          <td class="num">{{ l.remaining_balance|money }}</td>
-          <td style="min-width:120px">
-            <div class="progress"><div class="progress-bar" style="width: {{ l.completion_percentage }}%"></div></div>
-            <div style="font-size:11px;color:var(--slate-500);margin-top:4px">{{ '%.0f'|format(l.completion_percentage) }}%</div>
-          </td>
-          <td><span class="badge {{ l.loan_status.replace(' ','') }}">{{ l.loan_status }}</span></td>
-          <td>
-            <a href="{{ url_for('loans.details', loan_pk=l.id) }}" class="btn ghost sm"><i data-lucide="eye"></i></a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <div class="empty"><i data-lucide="inbox"></i><h3>No loans match</h3><p>Try clearing filters or add a new loan.</p></div>
-  {% endif %}
+<div id="loansTableContainer">
+  <div class="card">
+    <div class="table-wrap">
+    {% if pagination.items %}
+      <table class="tbl" id="loansTable">
+        <thead><tr>
+          <th style="cursor:pointer" onclick="sortTable(0)">Loan ID <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th style="cursor:pointer" onclick="sortTable(1)">Name <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th style="cursor:pointer" onclick="sortTable(2)">Bank <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th style="cursor:pointer" onclick="sortTable(3)">Category <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th class="num" style="cursor:pointer" onclick="sortTable(4, true)">Amount <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th class="num" style="cursor:pointer" onclick="sortTable(5, true)">Rate <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th class="num" style="cursor:pointer" onclick="sortTable(6, true)">Remaining <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th style="cursor:pointer" onclick="sortTable(7, true)">Progress <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th style="cursor:pointer" onclick="sortTable(8)">Status <i data-lucide="chevrons-up-down" style="width:12px;height:12px;vertical-align:middle;margin-left:4px"></i></th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+        {% for l in pagination.items %}
+          <tr class="loan-row" data-amount="{{ l.loan_amount }}" data-rate="{{ l.interest_rate }}" data-remaining="{{ l.remaining_balance }}" data-progress="{{ l.completion_percentage }}">
+            <td><strong>{{ l.loan_id }}</strong></td>
+            <td><a href="{{ url_for('loans.details', loan_pk=l.id) }}">{{ l.loan_name }}</a></td>
+            <td>{{ l.bank_name }}</td>
+            <td>{{ l.loan_category }}</td>
+            <td class="num">{{ l.loan_amount|money }}</td>
+            <td class="num">{{ '%.2f'|format(l.interest_rate) }}%</td>
+            <td class="num">{{ l.remaining_balance|money }}</td>
+            <td style="min-width:120px">
+              <div class="progress"><div class="progress-bar" style="width: {{ l.completion_percentage }}%"></div></div>
+              <div style="font-size:11px;color:var(--slate-500);margin-top:4px">{{ '%.0f'|format(l.completion_percentage) }}%</div>
+            </td>
+            <td><span class="badge {{ l.loan_status.replace(' ','') }}">{{ l.loan_status }}</span></td>
+            <td>
+              <a href="{{ url_for('loans.details', loan_pk=l.id) }}" class="btn ghost sm"><i data-lucide="eye"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><i data-lucide="inbox"></i><h3>No loans match</h3><p>Try clearing filters or add a new loan.</p></div>
+    {% endif %}
+    </div>
   </div>
-</div>
 
-{% if pagination.pages > 1 %}
-<div class="pager">
-  {% for p in pagination.iter_pages() %}
-    {% if p %}
-      {% if p == pagination.page %}<span class="current">{{ p }}</span>
-      {% else %}<a href="?page={{ p }}&q={{ q }}&status={{ status }}">{{ p }}</a>{% endif %}
-    {% else %}<span>…</span>{% endif %}
-  {% endfor %}
+  {% if pagination.pages > 1 %}
+  <div class="pager">
+    {% for p in pagination.iter_pages() %}
+      {% if p %}
+        {% if p == pagination.page %}<span class="current">{{ p }}</span>
+        {% else %}<a href="?page={{ p }}&q={{ q }}&status={{ status }}">{{ p }}</a>{% endif %}
+      {% else %}<span>…</span>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 
     <!-- Bulk Upload Modal -->
     <div id="bulkUploadModal" class="modal-overlay">
@@ -732,6 +741,160 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Client-side table sorting
+    let currentSortCol = -1;
+    let currentSortAsc = true;
+
+    window.sortTable = function(colIndex, isNumeric = false) {
+        const table = document.getElementById('loansTable');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr.loan-row'));
+        
+        if (currentSortCol === colIndex) {
+            currentSortAsc = !currentSortAsc;
+        } else {
+            currentSortCol = colIndex;
+            currentSortAsc = true;
+        }
+        
+        rows.sort((a, b) => {
+            let valA, valB;
+            
+            if (isNumeric) {
+                if (colIndex === 4) {
+                    valA = parseFloat(a.dataset.amount || 0);
+                    valB = parseFloat(b.dataset.amount || 0);
+                } else if (colIndex === 5) {
+                    valA = parseFloat(a.dataset.rate || 0);
+                    valB = parseFloat(b.dataset.rate || 0);
+                } else if (colIndex === 6) {
+                    valA = parseFloat(a.dataset.remaining || 0);
+                    valB = parseFloat(b.dataset.remaining || 0);
+                } else if (colIndex === 7) {
+                    valA = parseFloat(a.dataset.progress || 0);
+                    valB = parseFloat(b.dataset.progress || 0);
+                } else {
+                    valA = parseFloat(a.cells[colIndex].textContent.replace(/[^\d.-]/g, '') || 0);
+                    valB = parseFloat(b.cells[colIndex].textContent.replace(/[^\d.-]/g, '') || 0);
+                }
+            } else {
+                valA = a.cells[colIndex].textContent.trim().toLowerCase();
+                valB = b.cells[colIndex].textContent.trim().toLowerCase();
+            }
+            
+            if (valA < valB) return currentSortAsc ? -1 : 1;
+            if (valA > valB) return currentSortAsc ? 1 : -1;
+            return 0;
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+        
+        const headers = table.querySelectorAll('thead th');
+        headers.forEach((th, idx) => {
+            const icon = th.querySelector('i[data-lucide]');
+            if (icon) {
+                if (idx === colIndex) {
+                    icon.setAttribute('data-lucide', currentSortAsc ? 'chevron-up' : 'chevron-down');
+                } else {
+                    icon.setAttribute('data-lucide', 'chevrons-up-down');
+                }
+            }
+        });
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    };
+
+    // AJAX Filtering & Search
+    const filterSearch = document.getElementById('filterSearch');
+    const filterStatus = document.getElementById('filterStatus');
+    const filtersForm = document.getElementById('filtersForm');
+    const loansTableContainer = document.getElementById('loansTableContainer');
+
+    let debounceTimeout = null;
+
+    function fetchFilteredLoans() {
+        if (!filterSearch || !filterStatus) return;
+        const query = filterSearch.value;
+        const status = filterStatus.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('q', query);
+        url.searchParams.set('status', status);
+        url.searchParams.set('page', '1');
+
+        fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTableContainer = doc.getElementById('loansTableContainer');
+            const currentTableContainer = document.getElementById('loansTableContainer');
+            if (newTableContainer && currentTableContainer) {
+                currentTableContainer.innerHTML = newTableContainer.innerHTML;
+                window.history.pushState({ path: url.toString() }, '', url.toString());
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+        })
+        .catch(err => console.error("Error filtering loans:", err));
+    }
+
+    if (filterSearch && filterStatus) {
+        filterSearch.addEventListener('input', function() {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(fetchFilteredLoans, 300);
+        });
+
+        filterStatus.addEventListener('change', function() {
+            fetchFilteredLoans();
+        });
+
+        if (filtersForm) {
+            filtersForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                fetchFilteredLoans();
+            });
+        }
+    }
+
+    // Pager Link Interceptor via delegation
+    document.addEventListener('click', function(e) {
+        const pagerLink = e.target.closest('#loansTableContainer .pager a');
+        if (pagerLink) {
+            e.preventDefault();
+            const href = pagerLink.getAttribute('href');
+            const url = new URL(href, window.location.origin);
+            
+            fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newTableContainer = doc.getElementById('loansTableContainer');
+                const currentTableContainer = document.getElementById('loansTableContainer');
+                if (newTableContainer && currentTableContainer) {
+                    currentTableContainer.innerHTML = newTableContainer.innerHTML;
+                    window.history.pushState({ path: url.toString() }, '', url.toString());
+                    if (window.lucide) {
+                        window.lucide.createIcons();
+                    }
+                }
+            })
+            .catch(err => console.error("Error fetching page:", err));
+        }
+    });
 });
 </script>
 {% endblock %}

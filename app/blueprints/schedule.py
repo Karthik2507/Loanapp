@@ -280,3 +280,46 @@ def download_pdf(loan_pk):
     filename = f"schedule_{loan.loan_id}.pdf"
     return Response(buf.getvalue(), mimetype="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@schedule_bp.route("/<int:loan_pk>/bulk-mark-paid", methods=["POST"])
+@login_required
+def bulk_mark_paid(loan_pk):
+    loan = _get_loan(loan_pk)
+    schedule_ids = request.form.getlist("schedule_ids")
+    if not schedule_ids:
+        data = request.get_json() or {}
+        schedule_ids = data.get("schedule_ids", [])
+    
+    if not schedule_ids:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+            return {"success": False, "message": "No installments selected."}, 400
+        flash("No installments selected.", "warning")
+        return redirect(url_for("schedule.view", loan_pk=loan.id))
+        
+    schedules = Schedule.query.filter(Schedule.id.in_(schedule_ids), Schedule.loan_id == loan.id, Schedule.payment_status != "Paid").all()
+    
+    from datetime import date
+    today = date.today()
+    
+    for s in schedules:
+        s.payment_status = "Paid"
+        s.paid_date = today
+        s.notes = "Bulk payment"
+        db.session.add(PaymentHistory(loan_id=loan.id, schedule_id=s.id, action="PAID", amount=s.emi, notes=s.notes))
+        
+    db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="MARK_PAID", detail=f"Bulk payment for {len(schedules)} installments"))
+    update_loan_progress(loan)
+    db.session.commit()
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+        from flask import jsonify
+        return jsonify({
+            "ok": True, 
+            "loan_status": loan.loan_status,
+            "remaining_balance": loan.remaining_balance,
+            "completion_percentage": loan.completion_percentage
+        })
+        
+    flash(f"Successfully marked {len(schedules)} installments as paid.", "success")
+    return redirect(url_for("schedule.view", loan_pk=loan.id))

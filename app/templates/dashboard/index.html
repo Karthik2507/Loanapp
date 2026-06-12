@@ -19,7 +19,7 @@
     <div class="value" data-stat="total_loan_amount">{{ stats.total_loan_amount|money }}</div>
   </div>
   <div class="kpi">
-    <div class="label">Total Interest Payable</div>
+    <div class="label">Total Interest Payable <span class="tooltip-trigger" data-tooltip="Cumulative sum of interest components over the entire tenure of all loans."><i data-lucide="help-circle" style="width:12px;height:12px;margin-left:4px"></i></span></div>
     <div class="value" data-stat="total_interest">{{ stats.total_interest|money }}</div>
   </div>
   <div class="kpi">
@@ -43,15 +43,15 @@
     <div class="value" data-stat="total_paid">{{ stats.total_paid|money }}</div>
   </div>
   <div class="kpi">
-    <div class="label">Outstanding</div>
+    <div class="label">Outstanding <span class="tooltip-trigger" data-tooltip="Remaining payments (principal + interest) to be paid to clear all loans."><i data-lucide="help-circle" style="width:12px;height:12px;margin-left:4px"></i></span></div>
     <div class="value" data-stat="outstanding">{{ stats.outstanding|money }}</div>
   </div>
   <div class="kpi">
-    <div class="label">Weighted Avg Rate</div>
+    <div class="label">Weighted Avg Rate <span class="tooltip-trigger" data-tooltip="Average interest rate weighted by the remaining balance of active loans."><i data-lucide="help-circle" style="width:12px;height:12px;margin-left:4px"></i></span></div>
     <div class="value"><span data-stat="weighted_interest_rate">{{ stats.weighted_interest_rate }}</span>%</div>
   </div>
   <div class="kpi">
-    <div class="label">DTI Ratio [ Debt-to-Income ]</div>
+    <div class="label">DTI Ratio [ Debt-to-Income ] <span class="tooltip-trigger" data-tooltip="Percentage of monthly income used to pay active EMIs. Values below 36% are considered healthy."><i data-lucide="help-circle" style="width:12px;height:12px;margin-left:4px"></i></span></div>
     {% if stats.monthly_income > 0 %}
       <div class="value"><span data-stat="dti_ratio">{{ stats.dti_ratio }}</span>%</div>
     {% else %}
@@ -80,7 +80,10 @@
         <div class="num">{{ stats.health }}</div>
       </div>
       <div>
-        <div style="font-size:13px;color:var(--slate-500)">Composite score</div>
+        <div style="font-size:13px;color:var(--slate-500)">
+          Composite score
+          <span class="tooltip-trigger" data-tooltip="Composite health score based on loan completion, payment consistency, overdue status, and balloon payment exposure."><i data-lucide="help-circle" style="width:12px;height:12px;margin-left:4px"></i></span>
+        </div>
         <div style="font-weight:600;color:var(--slate-800);margin-top:4px">{{ 'Excellent' if stats.health>=80 else
           ('Good' if stats.health>=60 else 'Needs attention') }}</div>
         <div style="font-size:12px;color:var(--slate-500);margin-top:10px;max-width:200px">Based on completion, payment
@@ -91,7 +94,74 @@
   <div class="card pad" style="grid-column: span 2">
     <h3 style="margin-bottom:10px">Smart Insights</h3>
     {% for ins in charts.insights %}
-    <div class="insight"><i data-lucide="sparkles"></i> {{ ins }}</div>
+      {% set matched = namespace(found=false, loan_id='', id=0, type='') %}
+      {% if ins.startswith("Refinance alert:") %}
+        {% set parts = ins.split(': ') %}
+        {% if parts|length > 1 %}
+          {% set loan_id_part = parts[1].split(' ') %}
+          {% set matched.loan_id = loan_id_part[0] %}
+          {% set matched.type = 'refinance' %}
+        {% endif %}
+      {% elif ins.startswith("Prepay tip:") %}
+        {% set parts = ins.split('on ') %}
+        {% if parts|length > 1 %}
+          {% set loan_id_part = parts[1].split(' ') %}
+          {% set matched.loan_id = loan_id_part[0] %}
+          {% set matched.type = 'recalculate' %}
+        {% endif %}
+      {% elif "repaid on" in ins %}
+        {% set parts = ins.split('on ') %}
+        {% if parts|length > 1 %}
+          {% set matched.loan_id = parts[1].strip() %}
+          {% set matched.type = 'details' %}
+        {% endif %}
+      {% elif ins.startswith("Balloon for") %}
+        {% set parts = ins.split('for ') %}
+        {% if parts|length > 1 %}
+          {% set loan_id_part = parts[1].split(' ') %}
+          {% set matched.loan_id = loan_id_part[0] %}
+          {% set matched.type = 'schedule' %}
+        {% endif %}
+      {% endif %}
+      
+      {% if matched.loan_id %}
+        {% for l in loans %}
+          {% if l.loan_id == matched.loan_id %}
+            {% set matched.id = l.id %}
+            {% set matched.found = true %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if matched.found %}
+        {% if matched.type == 'refinance' %}
+          <div class="insight clickable" onclick="location.href='{{ url_for('loans.details', loan_pk=matched.id) }}#tab-refinance'" style="margin-bottom: 8px;">
+            <i data-lucide="trending-up" style="color:var(--blue-600); flex-shrink: 0;"></i> 
+            <span style="flex-grow:1; margin-left: 8px;">{{ ins }}</span>
+            <i data-lucide="chevron-right" style="width:16px; height:16px; margin-left:4px; opacity:0.7; flex-shrink: 0;"></i>
+          </div>
+        {% elif matched.type == 'recalculate' %}
+          <div class="insight clickable" onclick="location.href='{{ url_for('recalc.index', loan_pk=matched.id) }}'" style="margin-bottom: 8px;">
+            <i data-lucide="calculator" style="color:var(--emerald-600); flex-shrink: 0;"></i> 
+            <span style="flex-grow:1; margin-left: 8px;">{{ ins }}</span>
+            <i data-lucide="chevron-right" style="width:16px; height:16px; margin-left:4px; opacity:0.7; flex-shrink: 0;"></i>
+          </div>
+        {% elif matched.type == 'schedule' %}
+          <div class="insight clickable" onclick="location.href='{{ url_for('schedule.view', loan_pk=matched.id) }}'" style="margin-bottom: 8px;">
+            <i data-lucide="calendar" style="color:var(--warning); flex-shrink: 0;"></i> 
+            <span style="flex-grow:1; margin-left: 8px;">{{ ins }}</span>
+            <i data-lucide="chevron-right" style="width:16px; height:16px; margin-left:4px; opacity:0.7; flex-shrink: 0;"></i>
+          </div>
+        {% else %}
+          <div class="insight clickable" onclick="location.href='{{ url_for('loans.details', loan_pk=matched.id) }}'" style="margin-bottom: 8px;">
+            <i data-lucide="sparkles" style="color:var(--blue-500); flex-shrink: 0;"></i> 
+            <span style="flex-grow:1; margin-left: 8px;">{{ ins }}</span>
+            <i data-lucide="chevron-right" style="width:16px; height:16px; margin-left:4px; opacity:0.7; flex-shrink: 0;"></i>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="insight" style="margin-bottom: 8px;"><i data-lucide="sparkles" style="flex-shrink: 0;"></i> <span style="margin-left: 8px;">{{ ins }}</span></div>
+      {% endif %}
     {% endfor %}
   </div>
 </div>

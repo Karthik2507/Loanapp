@@ -60,7 +60,10 @@ def index():
         
     # 3. Dynamic Fiscal Year Tax Summary Report
     selected_fy = request.args.get("fy", type=int)
+    selected_compare_fy = request.args.get("fy_compare", type=int)
     fy_data = None
+    compare_fy_data = None
+    
     if selected_fy:
         fy_start = date(selected_fy, M, 1)
         fy_end = fy_start + relativedelta(years=1) - timedelta(days=1)
@@ -78,7 +81,6 @@ def index():
             "total_paid": 0.0
         }
         for l in loans:
-            # query paid schedules in date range
             paid_installments = l.schedules.filter(
                 Schedule.payment_status == "Paid",
                 Schedule.paid_date >= fy_start,
@@ -99,15 +101,57 @@ def index():
                 fy_data["total_interest"] += i_sum
                 fy_data["total_paid"] += tot
                 
-        # round sums
         fy_data["total_principal"] = round(fy_data["total_principal"], 2)
         fy_data["total_interest"] = round(fy_data["total_interest"], 2)
         fy_data["total_paid"] = round(fy_data["total_paid"], 2)
+
+    if selected_compare_fy:
+        fy_compare_start = date(selected_compare_fy, M, 1)
+        fy_compare_end = fy_compare_start + relativedelta(years=1) - timedelta(days=1)
+        
+        if M == 1:
+            fy_compare_label = f"FY {selected_compare_fy}"
+        else:
+            fy_compare_label = f"FY {selected_compare_fy}-{str(selected_compare_fy+1)[2:]}"
+            
+        compare_fy_data = {
+            "label": fy_compare_label,
+            "loans": [],
+            "total_principal": 0.0,
+            "total_interest": 0.0,
+            "total_paid": 0.0
+        }
+        for l in loans:
+            paid_installments = l.schedules.filter(
+                Schedule.payment_status == "Paid",
+                Schedule.paid_date >= fy_compare_start,
+                Schedule.paid_date <= fy_compare_end
+            ).all()
+            if paid_installments:
+                p_sum = sum(s.principal for s in paid_installments)
+                i_sum = sum(s.interest for s in paid_installments)
+                tot = sum(s.emi for s in paid_installments)
+                compare_fy_data["loans"].append({
+                    "loan_id": l.loan_id,
+                    "loan_name": l.loan_name,
+                    "principal": round(p_sum, 2),
+                    "interest": round(i_sum, 2),
+                    "total": round(tot, 2)
+                })
+                compare_fy_data["total_principal"] += p_sum
+                compare_fy_data["total_interest"] += i_sum
+                compare_fy_data["total_paid"] += tot
+                
+        compare_fy_data["total_principal"] = round(compare_fy_data["total_principal"], 2)
+        compare_fy_data["total_interest"] = round(compare_fy_data["total_interest"], 2)
+        compare_fy_data["total_paid"] = round(compare_fy_data["total_paid"], 2)
         
     return render_template("reports/index.html", loans=loans,
                            total_borrowed=total_borrowed, total_remaining=total_remaining,
                            total_interest=total_interest, balloons=balloons, closures=closures,
-                           by_bank=by_bank, fy_choices=fy_choices, selected_fy=selected_fy, fy_data=fy_data)
+                           by_bank=by_bank, fy_choices=fy_choices, selected_fy=selected_fy,
+                           selected_compare_fy=selected_compare_fy, fy_data=fy_data,
+                           compare_fy_data=compare_fy_data)
 
 
 @reports_bp.route("/export.csv")

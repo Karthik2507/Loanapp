@@ -154,6 +154,7 @@
 
           <thead>
             <tr>
+              <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllSchedules"></th>
               <th>#</th>
               <th>Date</th>
               <th class="num">EMI</th>
@@ -169,7 +170,14 @@
 
           <tbody>
             {% for s in loan.schedules %}
-            <tr>
+            <tr class="schedule-row" data-id="{{ s.id }}">
+              <td style="text-align: center; vertical-align: middle;">
+                {% if s.payment_status != 'Paid' %}
+                  <input type="checkbox" class="schedule-checkbox" data-id="{{ s.id }}" data-emi="{{ s.emi }}" data-principal="{{ s.principal }}" data-interest="{{ s.interest }}" data-month="{{ s.month_index }}">
+                {% else %}
+                  <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--success)"></i>
+                {% endif %}
+              </td>
               <td><strong>{{ s.month_index }}</strong></td>
               <td>{{ s.payment_date|fdate }}</td>
               <td class="num">{{ s.emi|money }}</td>
@@ -182,9 +190,11 @@
               </td>
 
               <td>
-                {{ s.paid_date|fdate if s.paid_date else '—' }}
+                <span class="paid-date-text">{{ s.paid_date|fdate if s.paid_date else '—' }}</span>
                 {% if s.notes %}
-                  <div style="font-size:10px; color:var(--slate-500); margin-top:2px;">{{ s.notes }}</div>
+                  <div class="note-text" style="font-size:10px; color:var(--slate-500); margin-top:2px;">{{ s.notes }}</div>
+                {% else %}
+                  <div class="note-text" style="font-size:10px; color:var(--slate-500); margin-top:2px; display:none;"></div>
                 {% endif %}
               </td>
 
@@ -218,7 +228,12 @@
                         data-kind="paid"
                         style="display:inline-flex; gap:6px; align-items:center;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="text" name="notes" placeholder="Ref ID / Notes" style="font-size:11px; padding:3px 6px; border:1px solid var(--slate-200); border-radius:6px; width:110px;">
+                    <div style="position: relative; display: inline-flex; align-items: center;">
+                      <input type="text" name="notes" placeholder="Ref ID / Notes" class="ref-id-input" style="font-size:11px; padding:3px 24px 3px 6px; border:1px solid var(--slate-200); border-radius:6px; width:115px;">
+                      <button type="button" class="gen-ref-btn" title="Generate Ref ID" style="position: absolute; right: 4px; background: transparent; border: none; cursor: pointer; color: var(--slate-400); padding: 2px; display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="sparkles" style="width: 11px; height: 11px;"></i>
+                      </button>
+                    </div>
                     <button class="btn success sm">
                       <i data-lucide="check"></i> Mark paid
                     </button>
@@ -283,6 +298,26 @@
         </div>
       </div>
     {% endif %}
+
+    <!-- Bulk Payment Floating Action Bar -->
+    <div id="bulkFloatBar" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(120px); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 12px 24px; display: flex; align-items: center; gap: 20px; z-index: 999; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; opacity: 0; pointer-events: none;">
+      <div style="font-size: 13px; font-weight: 500; color: var(--text-main);">
+        Selected: <strong id="bulkSelectedCount" style="color: var(--blue-500);">0</strong> installments
+      </div>
+      <div style="height: 20px; width: 1px; background: var(--border-light);"></div>
+      <div style="font-size: 13px; color: var(--text-muted);">
+        Total EMI: <strong id="bulkTotalEmi" style="color: var(--text-title); font-weight: 600;">₹ 0.00</strong>
+      </div>
+      <div style="font-size: 13px; color: var(--text-muted);">
+        Principal: <span id="bulkTotalPrincipal">₹ 0.00</span>
+      </div>
+      <div style="font-size: 13px; color: var(--text-muted);">
+        Interest: <span id="bulkTotalInterest">₹ 0.00</span>
+      </div>
+      <button class="btn success sm" id="bulkMarkPaidBtn" style="gap: 6px; border-radius: var(--radius-sm);">
+        <i data-lucide="check-square" style="width: 14px; height: 14px;"></i> Mark Paid
+      </button>
+    </div>
 
   {% endif %} {# loan #}
 
@@ -366,6 +401,134 @@ document.addEventListener('DOMContentLoaded', function() {
               }
             });
         }
+    }
+
+    // Sparkles Ref ID Generator helper
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.gen-ref-btn');
+        if (btn) {
+            e.preventDefault();
+            const input = btn.closest('div').querySelector('.ref-id-input');
+            if (input) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const rand = Math.floor(1000 + Math.random() * 9000);
+                input.value = `TXN-${year}${month}${day}-${rand}`;
+            }
+        }
+    });
+
+    // Checkbox bulk operations
+    const selectAll = document.getElementById('selectAllSchedules');
+    const checkboxes = document.querySelectorAll('.schedule-checkbox');
+    const floatBar = document.getElementById('bulkFloatBar');
+    const selectedCountEl = document.getElementById('bulkSelectedCount');
+    const totalEmiEl = document.getElementById('bulkTotalEmi');
+    const totalPrincipalEl = document.getElementById('bulkTotalPrincipal');
+    const totalInterestEl = document.getElementById('bulkTotalInterest');
+    const bulkMarkPaidBtn = document.getElementById('bulkMarkPaidBtn');
+
+    function formatCurrency(val) {
+        return '₹ ' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    window.updateFloatBar = function() {
+        if (!floatBar) return;
+        const checked = Array.from(document.querySelectorAll('.schedule-checkbox')).filter(cb => cb.checked);
+        const count = checked.length;
+        
+        if (count > 0) {
+            let totalEmi = 0;
+            let totalPrincipal = 0;
+            let totalInterest = 0;
+            
+            checked.forEach(cb => {
+                totalEmi += parseFloat(cb.dataset.emi || 0);
+                totalPrincipal += parseFloat(cb.dataset.principal || 0);
+                totalInterest += parseFloat(cb.dataset.interest || 0);
+            });
+            
+            selectedCountEl.textContent = count;
+            totalEmiEl.textContent = formatCurrency(totalEmi);
+            totalPrincipalEl.textContent = formatCurrency(totalPrincipal);
+            totalInterestEl.textContent = formatCurrency(totalInterest);
+            
+            floatBar.style.transform = 'translateX(-50%) translateY(0)';
+            floatBar.style.opacity = '1';
+            floatBar.style.pointerEvents = 'auto';
+        } else {
+            floatBar.style.transform = 'translateX(-50%) translateY(120px)';
+            floatBar.style.opacity = '0';
+            floatBar.style.pointerEvents = 'none';
+        }
+    };
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.schedule-checkbox').forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            window.updateFloatBar();
+        });
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('schedule-checkbox')) {
+            const boxes = Array.from(document.querySelectorAll('.schedule-checkbox'));
+            if (!e.target.checked && selectAll) {
+                selectAll.checked = false;
+            } else if (selectAll && boxes.every(c => c.checked)) {
+                selectAll.checked = true;
+            }
+            window.updateFloatBar();
+        }
+    });
+
+    if (bulkMarkPaidBtn) {
+        bulkMarkPaidBtn.addEventListener('click', async function() {
+            const checked = Array.from(document.querySelectorAll('.schedule-checkbox')).filter(cb => cb.checked);
+            if (checked.length === 0) return;
+            
+            if (!confirm(`Mark ${checked.length} selected installments as paid?`)) {
+                return;
+            }
+            
+            const ids = checked.map(cb => cb.dataset.id);
+            const csrfToken = "{{ csrf_token() }}";
+            
+            const origText = bulkMarkPaidBtn.innerHTML;
+            bulkMarkPaidBtn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px;border-top-color:#fff;display:inline-block;vertical-align:middle;margin-right:4px;"></div> Processing...';
+            bulkMarkPaidBtn.setAttribute('disabled', 'true');
+            
+            try {
+                {% if loan %}
+                const res = await fetch(`/schedule/{{ loan.id }}/bulk-mark-paid`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ schedule_ids: ids })
+                });
+                const result = await res.json();
+                if (result.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Bulk payment failed: " + (result.message || "Unknown error"));
+                    bulkMarkPaidBtn.innerHTML = origText;
+                    bulkMarkPaidBtn.removeAttribute('disabled');
+                }
+                {% endif %}
+            } catch (err) {
+                console.error(err);
+                alert("Error sending bulk payment request.");
+                bulkMarkPaidBtn.innerHTML = origText;
+                bulkMarkPaidBtn.removeAttribute('disabled');
+            }
+        });
     }
 });
 </script>

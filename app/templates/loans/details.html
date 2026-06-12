@@ -186,6 +186,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
+    // Hash-based tab auto-opening
+    const hash = window.location.hash;
+    if (hash) {
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${hash.replace('#', '')}"]`);
+      if (targetBtn) {
+        setTimeout(() => targetBtn.click(), 50);
+      }
+    }
+
+
     // 2. Refinance Calculator Simulator
     const balance = parseFloat("{{ loan.remaining_balance }}");
     const currentInterest = parseFloat("{{ remaining_interest }}");

@@ -44,19 +44,166 @@
       {% endif %}
     </div>
     <div class="card-body" style="padding:0">
-      <form method="get" action="{{ url_for('reports.index') }}" class="no-print" style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
-        <select name="fy" style="padding:8px 12px; border:1px solid var(--slate-200); border-radius:10px; flex-grow:1; font-family:inherit;">
-          <option value="">-- Select Fiscal Year --</option>
-          {% for choice in fy_choices %}
-            <option value="{{ choice.val }}" {% if selected_fy == choice.val %}selected{% endif %}>
-              {{ choice.label }}
-            </option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn">Apply</button>
+      <form method="get" action="{{ url_for('reports.index') }}" class="no-print" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+        <div style="display:flex; gap:10px; align-items:center; width:100%;">
+          <div style="flex:1;">
+            <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Primary FY</label>
+            <select name="fy" style="padding:8px 12px; border:1px solid var(--slate-200); border-radius:10px; width:100%; font-family:inherit; font-size:13px;">
+              <option value="">-- Select Fiscal Year --</option>
+              {% for choice in fy_choices %}
+                <option value="{{ choice.val }}" {% if selected_fy == choice.val %}selected{% endif %}>
+                  {{ choice.label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Compare with (Optional)</label>
+            <select name="fy_compare" style="padding:8px 12px; border:1px solid var(--slate-200); border-radius:10px; width:100%; font-family:inherit; font-size:13px;">
+              <option value="">-- No Comparison --</option>
+              {% for choice in fy_choices %}
+                <option value="{{ choice.val }}" {% if selected_compare_fy == choice.val %}selected{% endif %}>
+                  {{ choice.label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn sm" style="align-self:flex-end; display:flex; align-items:center; gap:6px;"><i data-lucide="refresh-cw" style="width:14px; height:14px"></i> Update View</button>
       </form>
       
-      {% if fy_data %}
+      {% if fy_data and compare_fy_data %}
+        <!-- Side-by-side summary grid -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:12px;">
+            <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--slate-700); font-weight:600;">{{ fy_data.label }}</h4>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--slate-500);">Principal</span>
+                <strong>{{ fy_data.total_principal|money }}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--slate-500);">Interest</span>
+                <strong>{{ fy_data.total_interest|money }}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border-light); padding-top:6px; margin-top:4px;">
+                <span style="color:var(--slate-600); font-weight:500;">Total Paid</span>
+                <strong style="color:var(--text-title);">{{ fy_data.total_paid|money }}</strong>
+              </div>
+            </div>
+          </div>
+          <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:12px;">
+            <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--slate-700); font-weight:600;">{{ compare_fy_data.label }}</h4>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--slate-500);">Principal</span>
+                <strong>{{ compare_fy_data.total_principal|money }}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--slate-500);">Interest</span>
+                <strong>{{ compare_fy_data.total_interest|money }}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border-light); padding-top:6px; margin-top:4px;">
+                <span style="color:var(--slate-600); font-weight:500;">Total Paid</span>
+                <strong style="color:var(--text-title);">{{ compare_fy_data.total_paid|money }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delta comparison card -->
+        <div style="background:var(--bg-hover); border:1px solid var(--border-color); border-radius:10px; padding:14px; margin-bottom:16px;">
+          <h4 style="margin:0 0 10px 0; font-size:13px; font-weight:600; color:var(--text-main);">Comparison Analysis (Change from {{ fy_data.label }} to {{ compare_fy_data.label }})</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:12px;">
+            {% set principal_diff = compare_fy_data.total_principal - fy_data.total_principal %}
+            {% set interest_diff = compare_fy_data.total_interest - fy_data.total_interest %}
+            {% set total_diff = compare_fy_data.total_paid - fy_data.total_paid %}
+            <div>
+              <span style="color:var(--slate-500);">Principal Change</span>
+              <div style="font-size:14px; font-weight:700; margin-top:2px; color: {{ 'var(--success)' if principal_diff > 0 else 'var(--danger)' }}">
+                {{ '+' if principal_diff > 0 else '' }}{{ principal_diff|money }}
+              </div>
+            </div>
+            <div>
+              <span style="color:var(--slate-500);">Interest Change</span>
+              <div style="font-size:14px; font-weight:700; margin-top:2px; color: {{ 'var(--danger)' if interest_diff > 0 else 'var(--success)' }}">
+                {{ '+' if interest_diff > 0 else '' }}{{ interest_diff|money }}
+              </div>
+            </div>
+            <div>
+              <span style="color:var(--slate-500);">Total Outflow Change</span>
+              <div style="font-size:14px; font-weight:700; margin-top:2px; color: {{ 'var(--danger)' if total_diff > 0 else 'var(--success)' }}">
+                {{ '+' if total_diff > 0 else '' }}{{ total_diff|money }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tax Savings Estimator Widget for Comparison (on Primary FY) -->
+        <div id="taxEstimatorWidget" style="background:var(--blue-50); border:1px solid var(--blue-100); border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+          <h4 style="margin:0 0 8px 0; font-size:13px; color:var(--blue-700); display:flex; align-items:center; gap:6px; font-weight:600;">
+            <i data-lucide="percent" style="width:16px; height:16px;"></i> Primary Year Interest Tax Savings Estimator
+          </h4>
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <div style="flex:1; min-width:140px;">
+              <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Select Tax Bracket</label>
+              <select id="taxBracketSelect" style="padding:6px 12px; border:1px solid var(--slate-200); border-radius:8px; width:100%; font-size:12px; font-family:inherit;">
+                <option value="0.0">No Tax (0%)</option>
+                <option value="0.10">Lower Slab (10%)</option>
+                <option value="0.20">Middle Slab (20%)</option>
+                <option value="0.30">Higher Slab (30%)</option>
+                <option value="custom">Custom Rate...</option>
+              </select>
+            </div>
+            <div id="customTaxRateContainer" style="display:none; width:80px;">
+              <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Rate (%)</label>
+              <input type="number" id="customTaxRate" value="15" min="0" max="100" style="padding:5px 8px; border:1px solid var(--slate-200); border-radius:8px; width:100%; font-size:12px;">
+            </div>
+            <div style="text-align:right; margin-left:auto;">
+              <div style="font-size:11px; color:var(--slate-500);">Estimated Savings on {{ fy_data.label }}</div>
+              <strong id="estimatedTaxSavings" style="font-size:18px; color:var(--blue-600); font-weight:700;">₹ 0.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <table class="tbl" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>Loan ID</th>
+              <th class="num">{{ fy_data.label }} Principal</th>
+              <th class="num">{{ fy_data.label }} Interest</th>
+              <th class="num">{{ compare_fy_data.label }} Principal</th>
+              <th class="num">{{ compare_fy_data.label }} Interest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in loans %}
+              {% set ns = namespace(p1=0, i1=0, p2=0, i2=0) %}
+              {% for row in fy_data.loans %}
+                {% if row.loan_id == l.loan_id %}
+                  {% set ns.p1 = row.principal %}
+                  {% set ns.i1 = row.interest %}
+                {% endif %}
+              {% endfor %}
+              {% for row in compare_fy_data.loans %}
+                {% if row.loan_id == l.loan_id %}
+                  {% set ns.p2 = row.principal %}
+                  {% set ns.i2 = row.interest %}
+                {% endif %}
+              {% endfor %}
+              {% if ns.p1 > 0 or ns.i1 > 0 or ns.p2 > 0 or ns.i2 > 0 %}
+                <tr>
+                  <td><strong>{{ l.loan_id }}</strong><br><span style="font-size:10px;color:var(--slate-500)">{{ l.loan_name }}</span></td>
+                  <td class="num">{{ ns.p1|money if ns.p1 > 0 else '—' }}</td>
+                  <td class="num">{{ ns.i1|money if ns.i1 > 0 else '—' }}</td>
+                  <td class="num">{{ ns.p2|money if ns.p2 > 0 else '—' }}</td>
+                  <td class="num">{{ ns.i2|money if ns.i2 > 0 else '—' }}</td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      {% elif fy_data %}
         <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:12px; margin-bottom:12px;">
           <h4 style="margin:0 0 6px 0; font-size:14px; color:var(--slate-700);">Summary for {{ fy_data.label }}</h4>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center; font-size:12px;">
@@ -71,6 +218,33 @@
             <div>
               <div style="color:var(--slate-500);">Total Paid</div>
               <div style="font-weight:600; color:var(--slate-900);">{{ fy_data.total_paid|money }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tax Savings Estimator Widget -->
+        <div id="taxEstimatorWidget" style="background:var(--blue-50); border:1px solid var(--blue-100); border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+          <h4 style="margin:0 0 8px 0; font-size:13px; color:var(--blue-700); display:flex; align-items:center; gap:6px; font-weight:600;">
+            <i data-lucide="percent" style="width:16px; height:16px;"></i> Interest Tax Savings Estimator
+          </h4>
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <div style="flex:1; min-width:140px;">
+              <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Select Tax Bracket</label>
+              <select id="taxBracketSelect" style="padding:6px 12px; border:1px solid var(--slate-200); border-radius:8px; width:100%; font-size:12px; font-family:inherit;">
+                <option value="0.0">No Tax (0%)</option>
+                <option value="0.10">Lower Slab (10%)</option>
+                <option value="0.20">Middle Slab (20%)</option>
+                <option value="0.30">Higher Slab (30%)</option>
+                <option value="custom">Custom Rate...</option>
+              </select>
+            </div>
+            <div id="customTaxRateContainer" style="display:none; width:80px;">
+              <label style="font-size:11px; color:var(--slate-500); display:block; margin-bottom:4px;">Rate (%)</label>
+              <input type="number" id="customTaxRate" value="15" min="0" max="100" style="padding:5px 8px; border:1px solid var(--slate-200); border-radius:8px; width:100%; font-size:12px;">
+            </div>
+            <div style="text-align:right; margin-left:auto;">
+              <div style="font-size:11px; color:var(--slate-500);">Estimated Savings on {{ fy_data.label }}</div>
+              <strong id="estimatedTaxSavings" style="font-size:18px; color:var(--blue-600); font-weight:700;">₹ 0.00</strong>
             </div>
           </div>
         </div>
@@ -180,6 +354,20 @@
     visibility: hidden !important;
   }
 }
+#taxEstimatorWidget {
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+}
+html.dark #taxEstimatorWidget {
+  background: #0f1c30 !important;
+  border-color: #1e3a5f !important;
+}
+html.dark #taxEstimatorWidget h4 {
+  color: #60a5fa !important;
+}
+html.dark #estimatedTaxSavings {
+  color: #60a5fa !important;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -274,6 +462,47 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    // Tax Savings Estimator calculation
+    const interestVal = {{ fy_data.total_interest if fy_data else 0 }};
+    const select = document.getElementById('taxBracketSelect');
+    const customContainer = document.getElementById('customTaxRateContainer');
+    const customRateInput = document.getElementById('customTaxRate');
+    const savingsEl = document.getElementById('estimatedTaxSavings');
+
+    function calculateSavings() {
+        if (!select || !savingsEl) return;
+        let rate = parseFloat(select.value);
+        if (select.value === 'custom') {
+            rate = parseFloat(customRateInput.value || 0) / 100;
+        }
+        const savings = interestVal * rate;
+        
+        const currencyCode = "{{ current_user.preferred_currency or 'INR' }}";
+        const locale = currencyCode === 'INR' ? 'en-IN' : 'en-US';
+        const formatter = new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: currencyCode,
+            maximumFractionDigits: 2
+        });
+        
+        savingsEl.textContent = formatter.format(savings);
+    }
+
+    if (select) {
+        select.addEventListener('change', function() {
+            if (select.value === 'custom') {
+                customContainer.style.display = 'block';
+            } else {
+                customContainer.style.display = 'none';
+            }
+            calculateSavings();
+        });
+    }
+    if (customRateInput) {
+        customRateInput.addEventListener('input', calculateSavings);
+    }
+    calculateSavings();
 });
 </script>
 {% endblock %}

@@ -78,35 +78,84 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data.ok && row) {
             const statusCell = row.querySelector('[data-status]');
             const actionCell = row.querySelector('td:last-child');
-            const paidDateCell = row.querySelectorAll('td')[7];
+            let paidDateCell = row.querySelector('.paid-date-text')?.closest('td');
+            if (!paidDateCell) paidDateCell = row.querySelectorAll('td')[7];
+            const selectCell = row.querySelector('td');
             const csrf = form.querySelector('[name="csrf_token"]').value;
             const dateStr = data.paid_date;
 
             if (form.dataset.kind === 'paid') {
               statusCell.innerHTML = '<span class="badge Paid">Paid</span>';
+              if (selectCell && selectCell.querySelector('input[type="checkbox"]')) {
+                selectCell.innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--success)"></i>';
+              }
               if (paidDateCell) {
-                paidDateCell.innerHTML = dateStr;
+                const dateSpan = paidDateCell.querySelector('.paid-date-text');
+                if (dateSpan) {
+                  dateSpan.textContent = dateStr;
+                } else {
+                  paidDateCell.innerHTML = `<span class="paid-date-text">${dateStr}</span>`;
+                }
+                let noteDiv = paidDateCell.querySelector('.note-text');
                 if (notesVal) {
-                  paidDateCell.innerHTML += `<div style="font-size:10px; color:var(--slate-500); margin-top:2px;">${notesVal}</div>`;
+                  if (noteDiv) {
+                    noteDiv.textContent = notesVal;
+                    noteDiv.style.display = 'block';
+                  } else {
+                    paidDateCell.innerHTML += `<div class="note-text" style="font-size:10px; color:var(--slate-500); margin-top:2px;">${notesVal}</div>`;
+                  }
+                } else {
+                  if (noteDiv) {
+                    noteDiv.textContent = '';
+                    noteDiv.style.display = 'none';
+                  }
                 }
               }
-              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/mark-paid/', '/undo-paid/')}" data-ajax="payment" data-kind="undo" style="display:inline">
+              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/mark-paid/', '/undo-paid/')}" data-ajax="payment" data-schedule-id="${form.dataset.scheduleId}" data-kind="undo" style="display:inline">
                 <input type="hidden" name="csrf_token" value="${csrf}">
                 <button class="btn ghost sm" title="Undo paid"><i data-lucide="rotate-ccw"></i></button>
               </form>`;
             } else {
               statusCell.innerHTML = '<span class="badge Pending">Pending</span>';
-              const noteDiv = paidDateCell ? paidDateCell.querySelector('div') : null;
+              if (selectCell && selectCell.querySelector('[data-lucide="check-circle"]')) {
+                const sId = form.dataset.scheduleId || '';
+                const emi = row.querySelectorAll('td')[3].textContent.replace(/[^\d.-]/g, '');
+                const principal = row.querySelectorAll('td')[4].textContent.replace(/[^\d.-]/g, '');
+                const interest = row.querySelectorAll('td')[5].textContent.replace(/[^\d.-]/g, '');
+                const month = row.querySelector('td strong')?.textContent?.trim() || '';
+                selectCell.innerHTML = `<input type="checkbox" class="schedule-checkbox" data-id="${sId}" data-emi="${emi}" data-principal="${principal}" data-interest="${interest}" data-month="${month}">`;
+                // Hook change listener
+                const cb = selectCell.querySelector('input');
+                if (cb) {
+                  cb.addEventListener('change', function() {
+                    if (window.updateFloatBar) window.updateFloatBar();
+                  });
+                }
+              }
+              const noteDiv = paidDateCell ? paidDateCell.querySelector('.note-text') : null;
               const oldNoteVal = noteDiv ? noteDiv.textContent.trim() : '';
-              if (paidDateCell) paidDateCell.textContent = '—';
-              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/undo-paid/', '/mark-paid/')}" data-ajax="payment" data-kind="paid" style="display:inline-flex; gap:6px; align-items:center;">
+              if (paidDateCell) {
+                const dateSpan = paidDateCell.querySelector('.paid-date-text');
+                if (dateSpan) dateSpan.textContent = '—';
+                if (noteDiv) {
+                  noteDiv.textContent = '';
+                  noteDiv.style.display = 'none';
+                }
+              }
+              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/undo-paid/', '/mark-paid/')}" data-ajax="payment" data-schedule-id="${form.dataset.scheduleId}" data-kind="paid" style="display:inline-flex; gap:6px; align-items:center;">
                 <input type="hidden" name="csrf_token" value="${csrf}">
-                <input type="text" name="notes" placeholder="Ref ID / Notes" value="${oldNoteVal}" style="font-size:11px; padding:3px 6px; border:1px solid var(--slate-200); border-radius:6px; width:110px;">
+                <div style="position: relative; display: inline-flex; align-items: center;">
+                  <input type="text" name="notes" placeholder="Ref ID / Notes" class="ref-id-input" value="${oldNoteVal}" style="font-size:11px; padding:3px 24px 3px 6px; border:1px solid var(--slate-200); border-radius:6px; width:115px;">
+                  <button type="button" class="gen-ref-btn" title="Generate Ref ID" style="position: absolute; right: 4px; background: transparent; border: none; cursor: pointer; color: var(--slate-400); padding: 2px; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="sparkles" style="width: 11px; height: 11px;"></i>
+                  </button>
+                </div>
                 <button class="btn success sm"><i data-lucide="check"></i> Mark paid</button>
               </form>`;
             }
             if (window.lucide) lucide.createIcons();
             attachPaymentHandlers();
+            if (window.updateFloatBar) window.updateFloatBar();
 
             const progressBar = document.querySelector('.progress-bar');
             const progressText = progressBar?.closest('.card')?.querySelector('[style*="justify-content:space-between"]');

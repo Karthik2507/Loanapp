@@ -651,3 +651,66 @@ html.dark .savings-box .savings-summary {
   margin-top: 4px;
 }
 
+/* Tooltip trigger styling */
+.tooltip-trigger {
+  position: relative;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+.tooltip-trigger::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--slate-800);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: normal;
+  width: 200px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+  text-align: center;
+  font-weight: normal;
+  text-transform: none;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+html.dark .tooltip-trigger::after {
+  background: var(--bg-dropdown);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+.tooltip-trigger:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.insight.clickable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.insight.clickable:hover {
+  background: var(--blue-100);
+  color: var(--blue-900);
+  transform: translateX(4px);
+  text-decoration: none;
+}
+html.dark .insight.clickable:hover {
+  background: #0f2547;
+  color: #60a5fa;
+}
+
+
+

@@ -109,18 +109,25 @@
       </div>
     </div>
     
-    <!-- Target Payoff Solver Card -->
-    <div class="card pad secondary-card">
-      <h4 style="margin-bottom:12px;">Debt-Free Solver</h4>
-      <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
-        <div class="form-row" style="margin-bottom:0; flex:1; min-width:200px;">
-          <label>Target Months to Pay Off</label>
-          <input type="number" id="solverTargetMonths" placeholder="e.g. 24" min="1" value="{{ target_months|int }}">
+    <!-- Target Payoff Solver & Chart Comparison Section -->
+    <div class="grid grid-2" style="margin-top: 20px;">
+      <div class="card pad">
+        <h4 style="margin-bottom: 12px; font-weight: 600;">Amortization Trajectory Comparison</h4>
+        <div style="height: 250px; position: relative;"><canvas id="sandboxCompareChart"></canvas></div>
+      </div>
+      <div class="card pad secondary-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h4 style="margin-bottom:12px; font-weight: 600;">Debt-Free Solver</h4>
+          <p style="font-size: 12px; color: var(--slate-500); margin-bottom: 16px;">Calculate the exact monthly installment required to clear this debt within your desired timeframe.</p>
+          <div class="form-row" style="margin-bottom:16px;">
+            <label>Target Months to Pay Off</label>
+            <input type="number" id="solverTargetMonths" placeholder="e.g. 24" min="1" value="{{ target_months|int }}">
+          </div>
         </div>
-        <div class="solver-result-box">
+        <div class="solver-result-box" style="margin-top: auto;">
           <div class="solver-label">Required Monthly EMI</div>
-          <div id="solverRequiredEmi" class="solver-value">-</div>
-          <div id="solverExtraDetails" class="solver-details">Enter a target month value to solve</div>
+          <div id="solverRequiredEmi" class="solver-value" style="font-size: 24px; font-weight: 700; color: var(--text-title);">-</div>
+          <div id="solverExtraDetails" class="solver-details" style="font-size: 11px; color: var(--slate-500); margin-top: 4px;">Enter a target month value to solve</div>
         </div>
       </div>
     </div>
@@ -208,76 +215,191 @@ document.addEventListener('DOMContentLoaded', function() {
       return symbol + ' ' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     
-    function runExtraSimulation() {
+    let sandboxChart = null;
+
+    function initSandboxChart() {
+      const ctx = document.getElementById('sandboxCompareChart');
+      if (!ctx) return;
+      
+      sandboxChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Standard Path',
+              data: [],
+              borderColor: '#64748b',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: 'Strategy 1: Extra Monthly',
+              data: [],
+              borderColor: '#10b981',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: 'Strategy 2: Lump-sum Prepay',
+              data: [],
+              borderColor: '#3b82f6',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: { size: 10 },
+                boxWidth: 12
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Months',
+                font: { size: 10 }
+              },
+              grid: { display: false }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Balance',
+                font: { size: 10 }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateSandboxProjections() {
       const extra = parseFloat(sandboxExtraInput.value || 0);
-      if (extra <= 0 || isNaN(extra)) {
+      const lumpsum = parseFloat(sandboxLumpsumInput.value || 0);
+      const r = (rate / 100.0) / 12.0;
+
+      // 1. Standard Path Trajectory
+      let standardPath = [balance];
+      let remStandard = balance;
+      let mStandard = 0;
+      let interestStandard = 0;
+      while (remStandard > 0 && mStandard < 600) {
+        mStandard++;
+        const interest = Math.max(roundTo2(remStandard * r), 0);
+        let principalComp = roundTo2(standardEmi - interest);
+        interestStandard += interest;
+        if (principalComp >= remStandard) {
+          remStandard = 0;
+        } else {
+          remStandard = roundTo2(remStandard - principalComp);
+        }
+        standardPath.push(remStandard);
+      }
+
+      // 2. Strategy 1 (Extra Monthly) Trajectory
+      let extraPath = [balance];
+      let remExtra = balance;
+      let mExtra = 0;
+      let interestExtra = 0;
+      while (remExtra > 0 && mExtra < 600) {
+        mExtra++;
+        const interest = Math.max(roundTo2(remExtra * r), 0);
+        let principalComp = roundTo2((standardEmi - interest) + extra);
+        interestExtra += interest;
+        if (principalComp >= remExtra) {
+          remExtra = 0;
+        } else {
+          remExtra = roundTo2(remExtra - principalComp);
+        }
+        extraPath.push(remExtra);
+      }
+
+      // 3. Strategy 2 (Lump-sum Prepay) Trajectory
+      let lumpsumPath = [balance];
+      let remLumpsum = Math.max(balance - lumpsum, 0);
+      lumpsumPath.push(remLumpsum);
+      let mLumpsum = 0;
+      let interestLumpsum = 0;
+      while (remLumpsum > 0 && mLumpsum < 600) {
+        mLumpsum++;
+        const interest = Math.max(roundTo2(remLumpsum * r), 0);
+        let principalComp = roundTo2(standardEmi - interest);
+        interestLumpsum += interest;
+        if (principalComp >= remLumpsum) {
+          remLumpsum = 0;
+        } else {
+          remLumpsum = roundTo2(remLumpsum - principalComp);
+        }
+        lumpsumPath.push(remLumpsum);
+      }
+
+      // Update Strategy 1 UI Texts
+      if (extra > 0) {
+        const savedMonths = currentTenure - mExtra;
+        const savings = currentInterest - interestExtra;
+        optExtraTenure.textContent = mExtra + ' months';
+        optExtraSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
+        optExtraSavings.textContent = formatCurrency(Math.max(savings, 0));
+      } else {
         optExtraTenure.textContent = '-';
         optExtraSavedMonths.textContent = '-';
         optExtraSavings.textContent = '-';
-        return;
       }
-      
-      const r = (rate / 100.0) / 12.0;
-      let rem = balance;
-      let months = 0;
-      let totalInterest = 0;
-      
-      while (rem > 0 && months < 600) {
-        months++;
-        const interest = Math.max(roundTo2(rem * r), 0);
-        let principalComp = roundTo2((standardEmi - interest) + extra);
-        
-        if (principalComp >= rem) {
-          totalInterest += interest;
-          rem = 0;
-          break;
-        }
-        totalInterest += interest;
-        rem = roundTo2(rem - principalComp);
-      }
-      
-      const savedMonths = currentTenure - months;
-      const savings = currentInterest - totalInterest;
-      
-      optExtraTenure.textContent = months + ' months';
-      optExtraSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
-      optExtraSavings.textContent = formatCurrency(Math.max(savings, 0));
-    }
-    
-    function runLumpsumSimulation() {
-      const lumpsum = parseFloat(sandboxLumpsumInput.value || 0);
-      if (lumpsum <= 0 || isNaN(lumpsum) || lumpsum > balance) {
+
+      // Update Strategy 2 UI Texts
+      if (lumpsum > 0 && lumpsum <= balance) {
+        const savedMonths = currentTenure - (mLumpsum + 1);
+        const savings = currentInterest - interestLumpsum;
+        optLumpsumTenure.textContent = (mLumpsum + 1) + ' months';
+        optLumpsumSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
+        optLumpsumSavings.textContent = formatCurrency(Math.max(savings, 0));
+      } else {
         optLumpsumTenure.textContent = '-';
         optLumpsumSavedMonths.textContent = '-';
         optLumpsumSavings.textContent = '-';
-        return;
       }
-      
-      const r = (rate / 100.0) / 12.0;
-      let rem = balance - lumpsum;
-      let months = 0;
-      let totalInterest = 0;
-      
-      while (rem > 0 && months < 600) {
-        months++;
-        const interest = Math.max(roundTo2(rem * r), 0);
-        let principalComp = roundTo2(standardEmi - interest);
+
+      // Update Chart Trajectories
+      if (sandboxChart) {
+        const maxLen = Math.max(standardPath.length, extraPath.length, lumpsumPath.length);
+        const labels = Array.from({ length: maxLen }, (_, i) => 'M' + i);
         
-        if (principalComp >= rem) {
-          totalInterest += interest;
-          rem = 0;
-          break;
-        }
-        totalInterest += interest;
-        rem = roundTo2(rem - principalComp);
+        const padPath = (path) => {
+          const res = [...path];
+          while (res.length < maxLen) {
+            res.push(0);
+          }
+          return res;
+        };
+
+        sandboxChart.data.labels = labels;
+        sandboxChart.data.datasets[0].data = padPath(standardPath);
+        sandboxChart.data.datasets[1].data = padPath(extraPath);
+        sandboxChart.data.datasets[2].data = padPath(lumpsumPath);
+        sandboxChart.update();
       }
-      
-      const savedMonths = currentTenure - months;
-      const savings = currentInterest - totalInterest;
-      
-      optLumpsumTenure.textContent = months + ' months';
-      optLumpsumSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
-      optLumpsumSavings.textContent = formatCurrency(Math.max(savings, 0));
     }
     
     function runSolver() {
@@ -309,11 +431,13 @@ document.addEventListener('DOMContentLoaded', function() {
       return Math.round(num * 100) / 100;
     }
     
-    sandboxExtraInput.addEventListener('input', runExtraSimulation);
-    sandboxLumpsumInput.addEventListener('input', runLumpsumSimulation);
+    sandboxExtraInput.addEventListener('input', updateSandboxProjections);
+    sandboxLumpsumInput.addEventListener('input', updateSandboxProjections);
     solverTargetMonths.addEventListener('input', runSolver);
     
-    // Initial solver calculation
+    // Initial calls
+    initSandboxChart();
+    updateSandboxProjections();
     runSolver();
 });
 </script>

@@ -258,6 +258,22 @@ html.dark .modal-overlay {
   <div class="card pad" id="formCard" style="flex:1">
     <form method="POST" novalidate>
       {{ form.hidden_tag() }}
+      {% if mode != 'edit' %}
+      <div class="presets-section" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light)">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 10px;">Quick Presets</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn secondary sm preset-btn" data-preset="home" style="display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="home" style="width:14px;height:14px"></i> Home Loan
+          </button>
+          <button type="button" class="btn secondary sm preset-btn" data-preset="auto" style="display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="car" style="width:14px;height:14px"></i> Auto Loan
+          </button>
+          <button type="button" class="btn secondary sm preset-btn" data-preset="personal" style="display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="user" style="width:14px;height:14px"></i> Personal Loan
+          </button>
+        </div>
+      </div>
+      {% endif %}
       <div class="form-grid">
         <div class="form-row"><label>Loan ID (unique)</label>{{ form.loan_id(placeholder="HOME001") }}{% for e in form.loan_id.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
         <div class="form-row"><label>Loan Name</label>{{ form.loan_name(placeholder="Home Loan — Apartment") }}{% for e in form.loan_name.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
@@ -472,6 +488,49 @@ html.dark .modal-overlay {
 {% if mode != 'edit' %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Preset buttons logic
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    presetButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const preset = btn.getAttribute('data-preset');
+            const catSelect = document.getElementById('loan_category');
+            const rateInput = document.getElementById('interest_rate');
+            const tenureInput = document.getElementById('tenure_months');
+            const tenureUnitSelect = document.getElementById('tenure_unit');
+            
+            presetButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (preset === 'home') {
+                if (catSelect) catSelect.value = 'Home';
+                if (rateInput) rateInput.value = '8.50';
+                if (tenureUnitSelect) tenureUnitSelect.value = 'years';
+                if (tenureInput) tenureInput.value = '20';
+            } else if (preset === 'auto') {
+                if (catSelect) catSelect.value = 'Auto';
+                if (rateInput) rateInput.value = '7.20';
+                if (tenureUnitSelect) tenureUnitSelect.value = 'years';
+                if (tenureInput) tenureInput.value = '5';
+            } else if (preset === 'personal') {
+                if (catSelect) catSelect.value = 'Personal';
+                if (rateInput) rateInput.value = '11.50';
+                if (tenureUnitSelect) tenureUnitSelect.value = 'months';
+                if (tenureInput) tenureInput.value = '36';
+            }
+            
+            if (rateInput) rateInput.dispatchEvent(new Event('input'));
+            if (tenureInput) tenureInput.dispatchEvent(new Event('input'));
+            if (tenureUnitSelect) {
+                tenureUnitSelect.dispatchEvent(new Event('change'));
+                if (typeof updateStep === 'function') updateStep();
+            }
+            // Trigger amortization preview update if open
+            if (typeof generateAmortizationPreview === 'function' && document.getElementById('previewCard').style.display === 'block') {
+                generateAmortizationPreview();
+            }
+        });
+    });
+
     const loanAmountInput = document.getElementById('loan_amount');
     const loanAmountWords = document.getElementById('loanAmountWords');
 
