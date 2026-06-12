@@ -1,10 +1,10 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from collections import defaultdict
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, url_for
 from flask_login import login_required, current_user
 from dateutil.relativedelta import relativedelta
 from app.models import Loan, Setting
-from app.utils import portfolio_health_score, emi_amount
+from app.utils import portfolio_health_score, emi_amount, format_currency
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -226,3 +226,94 @@ def index():
 def stats_api():
     loans = current_user.loans.filter_by(is_archived=False).all()
     return jsonify({"stats": _stats(loans), "charts": _charts(loans)})
+
+
+@dashboard_bp.route("/api/notifications")
+@login_required
+def notifications_api():
+    from app.models import Schedule, ActivityLog
+    
+    today = date.today()
+    forty_five_days_later = today + timedelta(days=45)
+    
+    notifications = []
+    
+    # Fetch all active (non-completed, non-archived) loans
+    active_loans = current_user.loans.filter(
+        Loan.loan_status != "Completed",
+        Loan.is_archived == False
+    ).all()
+    
+    # 1. Overdue Installments
+    for loan in active_loans:
+        overdue_schedules = loan.schedules.filter(
+            Schedule.payment_date < today,
+            Schedule.payment_status != "Paid"
+        ).all()
+        
+        for s in overdue_schedules:
+            notifications.append({
+                "id": f"overdue-{s.id}",
+                "type": "overdue",
+                "title": "Overdue Payment",
+                "message": f"EMI of {format_currency(s.emi, current_user.preferred_currency)} for '{loan.loan_name}' (ID: {loan.loan_id}) was due on {s.payment_date.strftime('%d %b %Y')}.",
+                "date": s.payment_date.isoformat(),
+                "severity": "high",
+                "link": url_for("schedule.view", loan_pk=loan.id)
+            })
+            
+    # 2. Impending Balloon Payments (within 45 days)
+    for loan in active_loans:
+        balloon_schedules = loan.schedules.filter(
+            Schedule.is_balloon == True,
+            Schedule.payment_status != "Paid",
+            Schedule.payment_date >= today,
+            Schedule.payment_date <= forty_five_days_later
+        ).all()
+        
+        for s in balloon_schedules:
+            days = (s.payment_date - today).days
+            notifications.append({
+                "id": f"balloon-{s.id}",
+                "type": "balloon",
+                "title": "Impending Balloon Payment",
+                "message": f"Balloon payment of {format_currency(s.emi, current_user.preferred_currency)} for '{loan.loan_name}' is due in {days} days ({s.payment_date.strftime('%d %b %Y')}).",
+                "date": s.payment_date.isoformat(),
+                "severity": "high" if days <= 15 else "medium",
+                "link": url_for("schedule.view", loan_pk=loan.id)
+            })
+            
+    # 3. Successful Bulk Imports / Updates (ActivityLog entries in the last 7 days)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    bulk_activities = ActivityLog.query.filter(
+        ActivityLog.user_id == current_user.id,
+        ActivityLog.created_at >= seven_days_ago,
+        ActivityLog.detail.like("%Bulk load%")
+    ).order_by(ActivityLog.created_at.desc()).all()
+    
+    for act in bulk_activities:
+        title = "Bulk Import Success" if act.action == "CREATE_LOAN" else "Bulk Update Success"
+        message = act.detail
+        loan = Loan.query.get(act.loan_id) if act.loan_id else None
+        
+        if act.action == "EDIT_LOAN" and loan:
+            message = f"Loan '{loan.loan_name}' (ID: {loan.loan_id}) updated via bulk upload."
+        elif act.action == "CREATE_LOAN":
+            clean_detail = act.detail.replace("(Bulk load)", "").strip()
+            message = f"Loan '{clean_detail}' created via bulk upload."
+            
+        notifications.append({
+            "id": f"activity-{act.id}",
+            "type": "import",
+            "title": title,
+            "message": message,
+            "date": act.created_at.isoformat() + "Z", # Mark as UTC
+            "severity": "info",
+            "link": url_for("loans.details", loan_pk=loan.id) if loan else None
+        })
+        
+    # Sort notifications by severity and date
+    severity_order = {"high": 0, "medium": 1, "info": 2}
+    notifications.sort(key=lambda x: (severity_order.get(x["severity"], 3), x["date"]))
+    
+    return jsonify({"notifications": notifications})

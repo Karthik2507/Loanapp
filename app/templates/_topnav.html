@@ -5,6 +5,33 @@
   </div>
   <div class="spacer"></div>
   <div class="date"><i data-lucide="calendar"></i> {{ now.strftime('%a, %d %b %Y') }}</div>
+  
+  <!-- Theme Toggle -->
+  <button id="themeToggle" class="theme-toggle-btn" title="Toggle theme">
+    <i data-lucide="sun" class="sun-icon"></i>
+    <i data-lucide="moon" class="moon-icon"></i>
+  </button>
+  
+  <!-- Notification Hub -->
+  <div class="notifications-hub">
+    <button class="notifications-btn" id="notificationsBtn" title="Notifications">
+      <i data-lucide="bell"></i>
+      <span class="notifications-badge" id="notificationsBadge"></span>
+    </button>
+    <div class="notifications-dropdown" id="notificationsDropdown">
+      <div class="notifications-header">
+        <h3>Notifications</h3>
+        <button id="clearAllNotifications" class="clear-all-btn">Mark all read</button>
+      </div>
+      <div class="notifications-list" id="notificationsList">
+        <div class="notification-empty">
+          <i data-lucide="bell-off"></i>
+          <p>No notifications yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% if request.endpoint and not request.endpoint.startswith('settings.') %}
     <a href="{{ url_for('loans.add') }}" class="btn"><i data-lucide="plus"></i> Add Loan</a>
   {% endif %}
@@ -12,8 +39,8 @@
     <button class="profile-btn">
       <div class="avatar">{{ current_user.full_name[:1]|upper }}</div>
       <div style="text-align:left;line-height:1.2">
-        <div style="font-weight:600;font-size:13px;color:var(--slate-900)">{{ current_user.full_name }}</div>
-        <div style="font-size:11px;color:var(--slate-500)">@{{ current_user.username }}</div>
+        <div style="font-weight:600;font-size:13px;color:var(--text-title)">{{ current_user.full_name }}</div>
+        <div style="font-size:11px;color:var(--text-muted)">@{{ current_user.username }}</div>
       </div>
       <i data-lucide="chevron-down" style="width:16px;height:16px"></i>
     </button>
