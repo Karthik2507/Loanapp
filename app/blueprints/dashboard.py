@@ -3,8 +3,8 @@ from collections import defaultdict
 from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
 from dateutil.relativedelta import relativedelta
-from app.models import Loan
-from app.utils import portfolio_health_score
+from app.models import Loan, Setting
+from app.utils import portfolio_health_score, emi_amount
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -27,6 +27,29 @@ def _stats(loans):
     completed = sum(1 for l in loans if l.loan_status == "Completed")
     closed_this_month = sum(1 for l in loans if l.closed_at and l.closed_at.date() >= month_start)
     remaining = sum(l.remaining_balance for l in loans)
+
+    # Weighted Average Interest Rate
+    active_loans = [l for l in loans if l.loan_status in ("Active", "Balloon Pending")]
+    total_remaining_active = sum(l.remaining_balance for l in active_loans)
+    if total_remaining_active > 0:
+        weighted_interest_rate = sum(l.interest_rate * l.remaining_balance for l in active_loans) / total_remaining_active
+    else:
+        weighted_interest_rate = sum(l.interest_rate for l in active_loans) / len(active_loans) if active_loans else 0.0
+
+    # Monthly Income and DTI Ratio
+    income_rec = Setting.query.filter_by(user_id=current_user.id, key="monthly_income").first()
+    monthly_income = float(income_rec.value) if income_rec and income_rec.value else 0.0
+    
+    total_monthly_emi = 0.0
+    for l in active_loans:
+        if l.custom_emi:
+            total_monthly_emi += float(l.custom_emi)
+        else:
+            principal = float(l.loan_amount) - float(l.down_payment or 0)
+            total_monthly_emi += emi_amount(principal, l.interest_rate, l.tenure_months)
+
+    dti_ratio = (total_monthly_emi / monthly_income) * 100 if monthly_income > 0 else 0.0
+
     return {
         "total_loan_amount": total_loan_amount,
         "total_interest": total_interest,
@@ -37,6 +60,10 @@ def _stats(loans):
         "total_paid": total_paid,
         "outstanding": outstanding,
         "health": portfolio_health_score(loans),
+        "weighted_interest_rate": round(weighted_interest_rate, 2),
+        "monthly_income": round(monthly_income, 2),
+        "total_monthly_emi": round(total_monthly_emi, 2),
+        "dti_ratio": round(dti_ratio, 2)
     }
 
 
@@ -112,6 +139,52 @@ def _charts(loans):
 
     # Smart insights
     insights = []
+    active_loans = [l for l in loans if l.loan_status in ("Active", "Balloon Pending")]
+    
+    # Refinancing alerts for high rates
+    for l in active_loans:
+        if l.interest_rate > 9.0:
+            insights.append(f"Refinance alert: {l.loan_id} rate is {l.interest_rate:.1f}%. Consider refinancing to save interest.")
+            
+    # Prepayment calculation tip
+    if active_loans:
+        # Find active loan with highest remaining balance
+        target_loan = max(active_loans, key=lambda l: l.remaining_balance)
+        if target_loan.remaining_balance > 5000:
+            unpaid_count = sum(1 for s in target_loan.schedules if s.payment_status != "Paid")
+            if unpaid_count > 6:
+                std_emi = target_loan.custom_emi if target_loan.custom_emi else emi_amount(
+                    float(target_loan.loan_amount) - float(target_loan.down_payment or 0),
+                    target_loan.interest_rate,
+                    target_loan.tenure_months
+                )
+                extra = round(std_emi * 0.1, -1)
+                if extra >= 50:
+                    monthly_rate = (target_loan.interest_rate / 100.0) / 12.0
+                    rem_extra = target_loan.remaining_balance
+                    months_with_extra = 0
+                    total_interest_extra = 0.0
+                    total_interest_normal = sum(s.interest for s in target_loan.schedules if s.payment_status != "Paid")
+                    
+                    for m in range(1, unpaid_count + 1):
+                        interest = max(round(rem_extra * monthly_rate, 2), 0.0)
+                        principal_comp = round((std_emi - interest) + extra, 2)
+                        if principal_comp >= rem_extra:
+                            total_interest_extra += interest
+                            months_with_extra = m
+                            break
+                        total_interest_extra += interest
+                        rem_extra = round(rem_extra - principal_comp, 2)
+                        months_with_extra = m
+                        
+                    saved_months = unpaid_count - months_with_extra
+                    saved_interest = max(total_interest_normal - total_interest_extra, 0.0)
+                    if saved_months > 0 and saved_interest > 100:
+                        from app.utils import format_currency
+                        formatted_extra = format_currency(extra, current_user.preferred_currency)
+                        formatted_saved = format_currency(saved_interest, current_user.preferred_currency)
+                        insights.append(f"Prepay tip: Adding {formatted_extra}/mo on {target_loan.loan_id} saves {formatted_saved} and cuts tenure by {saved_months} months.")
+
     for l in loans:
         if l.completion_percentage >= 60:
             insights.append(f"{l.completion_percentage:.0f}% repaid on {l.loan_id}")

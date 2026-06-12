@@ -89,6 +89,7 @@ class ProfileForm(FlaskForm):
 class PreferencesForm(FlaskForm):
     preferred_currency = SelectField("Currency", choices=CURRENCY_CHOICES)
     preferred_date_format = SelectField("Date format", choices=DATE_FMT_CHOICES)
+    monthly_income = FloatField("Monthly Net Income", validators=[Optional(), NumberRange(min=0)])
     gemini_api_key = StringField("Gemini API Key", validators=[Optional()])
     submit = SubmitField("Save preferences")
 

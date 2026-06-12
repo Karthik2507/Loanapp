@@ -18,6 +18,11 @@ def index():
     api_key_setting = Setting.query.filter_by(user_id=current_user.id, key="gemini_api_key").first()
     if api_key_setting:
         pref_form.gemini_api_key.data = api_key_setting.value
+
+    # Populate monthly income from Setting table
+    income_setting = Setting.query.filter_by(user_id=current_user.id, key="monthly_income").first()
+    if income_setting:
+        pref_form.monthly_income.data = float(income_setting.value) if income_setting.value else 0.0
         
     pwd_form = ChangePasswordForm()
     return render_template("settings/index.html",
@@ -64,6 +69,17 @@ def update_preferences():
                 db.session.delete(api_key_setting)
         elif new_key_value:
             db.session.add(Setting(user_id=current_user.id, key="gemini_api_key", value=new_key_value))
+
+        # Save or update Monthly Income in Setting table
+        income_setting = Setting.query.filter_by(user_id=current_user.id, key="monthly_income").first()
+        new_income_value = str(form.monthly_income.data) if form.monthly_income.data is not None else ""
+        if income_setting:
+            if new_income_value:
+                income_setting.value = new_income_value
+            else:
+                db.session.delete(income_setting)
+        elif new_income_value:
+            db.session.add(Setting(user_id=current_user.id, key="monthly_income", value=new_income_value))
             
         db.session.commit()
         flash("Preferences saved.", "success")

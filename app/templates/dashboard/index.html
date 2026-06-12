@@ -46,6 +46,20 @@
     <div class="label">Outstanding</div>
     <div class="value" data-stat="outstanding">{{ stats.outstanding|money }}</div>
   </div>
+  <div class="kpi">
+    <div class="label">Weighted Avg Rate</div>
+    <div class="value"><span data-stat="weighted_interest_rate">{{ stats.weighted_interest_rate }}</span>%</div>
+  </div>
+  <div class="kpi">
+    <div class="label">DTI Ratio [ Debt-to-Income ]</div>
+    {% if stats.monthly_income > 0 %}
+      <div class="value"><span data-stat="dti_ratio">{{ stats.dti_ratio }}</span>%</div>
+    {% else %}
+      <div class="value" style="font-size:13px;font-weight:500;color:var(--slate-500);margin-top:14px">
+        <a href="{{ url_for('settings.index') }}" style="text-decoration:underline;color:var(--blue-600)"><i data-lucide="plus-circle" style="width:12px;height:12px;vertical-align:middle;margin-right:2px"></i>Set Income in Settings</a>
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 {% if not loans %}

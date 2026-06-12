@@ -24,6 +24,7 @@
         {{ pref_form.hidden_tag() }}
         <div class="form-row"><label>Currency</label>{{ pref_form.preferred_currency() }}</div>
         <div class="form-row"><label>Date format</label>{{ pref_form.preferred_date_format() }}</div>
+        <div class="form-row"><label>Monthly Net Income</label>{{ pref_form.monthly_income(placeholder="e.g. 50000 (for DTI ratio)") }}{% for e in pref_form.monthly_income.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
         <div class="form-row">
           <label>Gemini API Key</label>
           <div class="password-input-wrapper">
