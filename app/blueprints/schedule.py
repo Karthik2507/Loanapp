@@ -65,6 +65,7 @@ def undo_paid(loan_pk, schedule_id):
     s = Schedule.query.filter_by(id=schedule_id, loan_id=loan.id).first_or_404()
     s.payment_status = "Pending"
     s.paid_date = None
+    s.notes = None
     db.session.add(PaymentHistory(loan_id=loan.id, schedule_id=s.id, action="UNDO", amount=s.emi, notes="Undo"))
     db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="UNDO_PAID", detail=f"Installment {s.month_index}"))
     update_loan_progress(loan)
@@ -105,6 +106,31 @@ def revise_interest(loan_pk):
                                detail=f"New rate {form.new_rate.data}% from installment {first_unpaid.month_index}"))
     db.session.commit()
     flash("Interest rate revised for remaining installments.", "success")
+    return redirect(url_for("schedule.view", loan_pk=loan.id))
+
+
+@schedule_bp.route("/<int:loan_pk>/mark-all-past-paid", methods=["POST"])
+@login_required
+def mark_all_past_paid(loan_pk):
+    loan = _get_loan(loan_pk)
+    from datetime import date
+    from app.models import PaymentHistory, ActivityLog
+    today = date.today()
+    unpaid_past = [s for s in loan.schedules if s.payment_status != "Paid" and s.payment_date <= today]
+    if not unpaid_past:
+        flash("No past-due pending installments to mark.", "info")
+        return redirect(url_for("schedule.view", loan_pk=loan.id))
+    
+    for s in unpaid_past:
+        s.payment_status = "Paid"
+        s.paid_date = today
+        s.notes = "Bulk past payments"
+        db.session.add(PaymentHistory(loan_id=loan.id, schedule_id=s.id, action="PAID", amount=s.emi, notes=s.notes))
+        
+    db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="MARK_PAST_PAID", detail=f"Marked {len(unpaid_past)} past installments as paid"))
+    update_loan_progress(loan)
+    db.session.commit()
+    flash(f"Successfully marked {len(unpaid_past)} past installments as paid.", "success")
     return redirect(url_for("schedule.view", loan_pk=loan.id))
 
 

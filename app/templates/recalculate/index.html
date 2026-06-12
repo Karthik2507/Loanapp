@@ -48,43 +48,273 @@
     </table>
   </div>
 </div>
+
+<!-- Live Prepayment Sandbox Section -->
+<div class="card" style="margin-top: 20px;">
+  <div class="card-header">
+    <h3>Prepayment Simulation Sandbox</h3>
+    <span style="font-size:12px;color:var(--slate-500)">Compare strategies in real-time before applying</span>
+  </div>
+  <div class="card-body">
+    <div class="grid grid-3" style="margin-bottom: 20px;">
+      <!-- Sandbox inputs card -->
+      <div class="card pad" style="border-style: dashed; background: var(--slate-50);">
+        <h4 style="margin-bottom: 12px;">Simulation Parameters</h4>
+        <div class="form-row">
+          <label>Regular Extra Payment (Monthly)</label>
+          <input type="number" id="sandboxExtra" placeholder="e.g. 5000" min="0" value="0">
+        </div>
+        <div class="form-row">
+          <label>One-time Lump-sum Payment (Today)</label>
+          <input type="number" id="sandboxLumpsum" placeholder="e.g. 50000" min="0" value="0">
+        </div>
+      </div>
+      
+      <!-- Option 1: Extra Monthly Results -->
+      <div class="card pad" id="optionExtraCard" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <span class="badge Active" style="margin-bottom:8px;">Strategy 1: Extra Monthly</span>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
+            <span style="color:var(--slate-500);">New Tenure</span>
+            <strong id="optExtraTenure" style="color:var(--slate-800);">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
+            <span style="color:var(--slate-500);">Payoff Acceleration</span>
+            <strong id="optExtraSavedMonths" style="color:var(--emerald-600);">-</strong>
+          </div>
+        </div>
+        <div style="background:var(--blue-50); border-radius:8px; padding:10px 14px; text-align:center; margin-top:8px;">
+          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600;">Interest Saved</div>
+          <div id="optExtraSavings" style="font-size:20px; font-weight:700; color:var(--blue-700); margin-top:2px;">-</div>
+        </div>
+      </div>
+      
+      <!-- Option 2: Lump-sum Prepayment Results -->
+      <div class="card pad" id="optionLumpsumCard" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <span class="badge Pending" style="margin-bottom:8px;">Strategy 2: Lump-sum Prepayment</span>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
+            <span style="color:var(--slate-500);">New Tenure</span>
+            <strong id="optLumpsumTenure" style="color:var(--slate-800);">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
+            <span style="color:var(--slate-500);">Payoff Acceleration</span>
+            <strong id="optLumpsumSavedMonths" style="color:var(--emerald-600);">-</strong>
+          </div>
+        </div>
+        <div style="background:var(--blue-50); border-radius:8px; padding:10px 14px; text-align:center; margin-top:8px;">
+          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600;">Interest Saved</div>
+          <div id="optLumpsumSavings" style="font-size:20px; font-weight:700; color:var(--blue-700); margin-top:2px;">-</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Target Payoff Solver Card -->
+    <div class="card pad" style="background:var(--slate-50); border-color:var(--slate-200);">
+      <h4 style="margin-bottom:12px;">Debt-Free Solver</h4>
+      <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="form-row" style="margin-bottom:0; flex:1; min-width:200px;">
+          <label>Target Months to Pay Off</label>
+          <input type="number" id="solverTargetMonths" placeholder="e.g. 24" min="1" value="{{ target_months|int }}">
+        </div>
+        <div style="flex:1; min-width:260px; background:#fff; border:1px solid var(--slate-200); border-radius:10px; padding:12px 16px; box-shadow:var(--shadow-sm);">
+          <div style="font-size:11px; text-transform:uppercase; color:var(--slate-500); font-weight:600;">Required Monthly EMI</div>
+          <div id="solverRequiredEmi" style="font-size:20px; font-weight:700; color:var(--slate-850); margin-top:2px;">-</div>
+          <div id="solverExtraDetails" style="font-size:12px; color:var(--slate-500); margin-top:4px;">Enter a target month value to solve</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endif %}
+
+<script id="recalculate-data" type="application/json">
+{
+  "remaining_balance": {{ loan.remaining_balance if loan else 0 }},
+  "unpaid_interest_remaining": {{ unpaid_interest if loan else 0 }},
+  "unpaid_tenure_remaining": {{ unpaid_tenure if loan else 0 }},
+  "interest_rate": {{ loan.interest_rate if loan else 0 }},
+  "standard_emi": {{ standard_emi if loan else 0 }}
+}
+</script>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. Original Form Toggles
     const recalcTypeSelect = document.getElementById('recalc_type');
-    if (!recalcTypeSelect) return;
+    if (recalcTypeSelect) {
+        const rateRow = document.getElementById('new_rate').closest('.form-row');
+        const tenureRow = document.getElementById('new_tenure').closest('.form-row');
+        const extraRow = document.getElementById('extra_amount').closest('.form-row');
+        const dateRow = document.getElementById('effective_date').closest('.form-row');
 
-    const rateRow = document.getElementById('new_rate').closest('.form-row');
-    const tenureRow = document.getElementById('new_tenure').closest('.form-row');
-    const extraRow = document.getElementById('extra_amount').closest('.form-row');
-    const dateRow = document.getElementById('effective_date').closest('.form-row');
+        function updateFieldVisibility() {
+            const selectedType = recalcTypeSelect.value;
+            rateRow.style.display = 'none';
+            tenureRow.style.display = 'none';
+            extraRow.style.display = 'none';
+            dateRow.style.display = 'none';
 
-    function updateFieldVisibility() {
-        const selectedType = recalcTypeSelect.value;
-        
-        // Hide all first
-        rateRow.style.display = 'none';
-        tenureRow.style.display = 'none';
-        extraRow.style.display = 'none';
-        dateRow.style.display = 'none';
-
-        if (selectedType === 'RATE') {
-            rateRow.style.display = '';
-            dateRow.style.display = '';
-        } else if (selectedType === 'TENURE') {
-            tenureRow.style.display = '';
-        } else if (selectedType === 'EXTRA') {
-            extraRow.style.display = '';
+            if (selectedType === 'RATE') {
+                rateRow.style.display = '';
+                dateRow.style.display = '';
+            } else if (selectedType === 'TENURE') {
+                tenureRow.style.display = '';
+            } else if (selectedType === 'EXTRA') {
+                extraRow.style.display = '';
+            }
         }
+        recalcTypeSelect.addEventListener('change', updateFieldVisibility);
+        updateFieldVisibility();
     }
 
-    recalcTypeSelect.addEventListener('change', updateFieldVisibility);
-    // Initial run
-    updateFieldVisibility();
+    // 2. Prepayment Sandbox Simulator Math
+    const sandboxDataEl = document.getElementById('recalculate-data');
+    if (!sandboxDataEl) return;
+    const loanData = JSON.parse(sandboxDataEl.textContent);
+    
+    const balance = loanData.remaining_balance;
+    const rate = loanData.interest_rate;
+    const currentTenure = loanData.unpaid_tenure_remaining;
+    const currentInterest = loanData.unpaid_interest_remaining;
+    const standardEmi = loanData.standard_emi;
+    
+    if (balance <= 0) return;
+
+    const sandboxExtraInput = document.getElementById('sandboxExtra');
+    const sandboxLumpsumInput = document.getElementById('sandboxLumpsum');
+    
+    // Outputs Option A
+    const optExtraTenure = document.getElementById('optExtraTenure');
+    const optExtraSavedMonths = document.getElementById('optExtraSavedMonths');
+    const optExtraSavings = document.getElementById('optExtraSavings');
+    
+    // Outputs Option B
+    const optLumpsumTenure = document.getElementById('optLumpsumTenure');
+    const optLumpsumSavedMonths = document.getElementById('optLumpsumSavedMonths');
+    const optLumpsumSavings = document.getElementById('optLumpsumSavings');
+    
+    // Solver inputs & outputs
+    const solverTargetMonths = document.getElementById('solverTargetMonths');
+    const solverRequiredEmi = document.getElementById('solverRequiredEmi');
+    const solverExtraDetails = document.getElementById('solverExtraDetails');
+    
+    const symbol = "{{ current_user.preferred_currency|money }}".split(' ')[0] || "₹";
+    
+    function formatCurrency(val) {
+      return symbol + ' ' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    
+    function runExtraSimulation() {
+      const extra = parseFloat(sandboxExtraInput.value || 0);
+      if (extra <= 0 || isNaN(extra)) {
+        optExtraTenure.textContent = '-';
+        optExtraSavedMonths.textContent = '-';
+        optExtraSavings.textContent = '-';
+        return;
+      }
+      
+      const r = (rate / 100.0) / 12.0;
+      let rem = balance;
+      let months = 0;
+      let totalInterest = 0;
+      
+      while (rem > 0 && months < 600) {
+        months++;
+        const interest = Math.max(roundTo2(rem * r), 0);
+        let principalComp = roundTo2((standardEmi - interest) + extra);
+        
+        if (principalComp >= rem) {
+          totalInterest += interest;
+          rem = 0;
+          break;
+        }
+        totalInterest += interest;
+        rem = roundTo2(rem - principalComp);
+      }
+      
+      const savedMonths = currentTenure - months;
+      const savings = currentInterest - totalInterest;
+      
+      optExtraTenure.textContent = months + ' months';
+      optExtraSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
+      optExtraSavings.textContent = formatCurrency(Math.max(savings, 0));
+    }
+    
+    function runLumpsumSimulation() {
+      const lumpsum = parseFloat(sandboxLumpsumInput.value || 0);
+      if (lumpsum <= 0 || isNaN(lumpsum) || lumpsum > balance) {
+        optLumpsumTenure.textContent = '-';
+        optLumpsumSavedMonths.textContent = '-';
+        optLumpsumSavings.textContent = '-';
+        return;
+      }
+      
+      const r = (rate / 100.0) / 12.0;
+      let rem = balance - lumpsum;
+      let months = 0;
+      let totalInterest = 0;
+      
+      while (rem > 0 && months < 600) {
+        months++;
+        const interest = Math.max(roundTo2(rem * r), 0);
+        let principalComp = roundTo2(standardEmi - interest);
+        
+        if (principalComp >= rem) {
+          totalInterest += interest;
+          rem = 0;
+          break;
+        }
+        totalInterest += interest;
+        rem = roundTo2(rem - principalComp);
+      }
+      
+      const savedMonths = currentTenure - months;
+      const savings = currentInterest - totalInterest;
+      
+      optLumpsumTenure.textContent = months + ' months';
+      optLumpsumSavedMonths.textContent = savedMonths > 0 ? `Saves ${savedMonths} months` : 'No change';
+      optLumpsumSavings.textContent = formatCurrency(Math.max(savings, 0));
+    }
+    
+    function runSolver() {
+      const targetMonths = parseInt(solverTargetMonths.value || 0);
+      if (targetMonths <= 0 || isNaN(targetMonths)) {
+        solverRequiredEmi.textContent = '-';
+        solverExtraDetails.textContent = 'Enter a target payoff month count.';
+        return;
+      }
+      
+      const r = (rate / 100.0) / 12.0;
+      let reqEmi = 0;
+      if (r === 0) {
+        reqEmi = balance / targetMonths;
+      } else {
+        reqEmi = balance * r * Math.pow(1 + r, targetMonths) / (Math.pow(1 + r, targetMonths) - 1);
+      }
+      
+      solverRequiredEmi.textContent = formatCurrency(reqEmi);
+      const diff = reqEmi - standardEmi;
+      if (diff > 0) {
+        solverExtraDetails.textContent = `Requires adding ${formatCurrency(diff)} / month to your current EMI of ${formatCurrency(standardEmi)}.`;
+      } else {
+        solverExtraDetails.textContent = `Lower than your current EMI. You can reduce payments or clear the debt earlier.`;
+      }
+    }
+    
+    function roundTo2(num) {
+      return Math.round(num * 100) / 100;
+    }
+    
+    sandboxExtraInput.addEventListener('input', runExtraSimulation);
+    sandboxLumpsumInput.addEventListener('input', runLumpsumSimulation);
+    solverTargetMonths.addEventListener('input', runSolver);
+    
+    // Initial solver calculation
+    runSolver();
 });
 </script>
 {% endblock %}

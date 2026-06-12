@@ -21,6 +21,22 @@ def index():
     loans = current_user.loans.filter_by(is_archived=False).all()
     selected_id = request.args.get("loan_pk", type=int)
     loan = _get_loan(selected_id) if selected_id else (loans[0] if loans else None)
+
+    unpaid_interest = 0.0
+    unpaid_tenure = 0
+    standard_emi = 0.0
+    target_months = 12
+    if loan:
+        unpaid_schedules = [s for s in loan.schedules if s.payment_status != "Paid"]
+        unpaid_interest = sum(s.interest for s in unpaid_schedules)
+        unpaid_tenure = len(unpaid_schedules)
+        target_months = min(12, int(loan.tenure_months))
+        if loan.custom_emi:
+            standard_emi = loan.custom_emi
+        else:
+            from app.utils import emi_amount
+            principal = float(loan.loan_amount) - float(loan.down_payment or 0)
+            standard_emi = emi_amount(principal, loan.interest_rate, loan.tenure_months)
     form = RecalcForm()
     choices = [
         ("RATE", "Interest Rate Change"),
@@ -127,7 +143,8 @@ def index():
             db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="RECALC", detail=summary))
             db.session.commit()
             flash(summary, "info")
-            return render_template("recalculate/index.html", loans=loans, loan=loan, form=form, simulation=simulation)
+            return render_template("recalculate/index.html", loans=loans, loan=loan, form=form, simulation=simulation,
+                                   unpaid_interest=unpaid_interest, unpaid_tenure=unpaid_tenure, standard_emi=standard_emi, target_months=target_months)
         update_loan_progress(loan)
         db.session.add(RecalculationHistory(loan_id=loan.id, recalc_type=rtype,
                                             payload=str(request.form.to_dict()), summary=summary))
@@ -135,4 +152,5 @@ def index():
         db.session.commit()
         flash("Recalculation applied to remaining installments.", "success")
         return redirect(url_for("recalc.index", loan_pk=loan.id))
-    return render_template("recalculate/index.html", loans=loans, loan=loan, form=form, simulation=simulation)
+    return render_template("recalculate/index.html", loans=loans, loan=loan, form=form, simulation=simulation,
+                           unpaid_interest=unpaid_interest, unpaid_tenure=unpaid_tenure, standard_emi=standard_emi, target_months=target_months)

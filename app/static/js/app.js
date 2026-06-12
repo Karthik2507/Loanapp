@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const btn = form.querySelector('button');
         if (!btn || btn.disabled) return;
+        
+        // Read notes input value before form submission
+        const notesInput = form.querySelector('[name="notes"]');
+        const notesVal = notesInput ? notesInput.value.trim() : '';
+
         const row = form.closest('tr');
         const orig = btn.innerHTML;
         btn.innerHTML = '<span class="spinner"></span>';
@@ -65,16 +70,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (form.dataset.kind === 'paid') {
               statusCell.innerHTML = '<span class="badge Paid">Paid</span>';
-              if (paidDateCell) paidDateCell.textContent = dateStr;
+              if (paidDateCell) {
+                paidDateCell.innerHTML = dateStr;
+                if (notesVal) {
+                  paidDateCell.innerHTML += `<div style="font-size:10px; color:var(--slate-500); margin-top:2px;">${notesVal}</div>`;
+                }
+              }
               actionCell.innerHTML = `<form method="post" action="${form.action.replace('/mark-paid/', '/undo-paid/')}" data-ajax="payment" data-kind="undo" style="display:inline">
                 <input type="hidden" name="csrf_token" value="${csrf}">
                 <button class="btn ghost sm" title="Undo paid"><i data-lucide="rotate-ccw"></i></button>
               </form>`;
             } else {
               statusCell.innerHTML = '<span class="badge Pending">Pending</span>';
+              const noteDiv = paidDateCell ? paidDateCell.querySelector('div') : null;
+              const oldNoteVal = noteDiv ? noteDiv.textContent.trim() : '';
               if (paidDateCell) paidDateCell.textContent = '—';
-              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/undo-paid/', '/mark-paid/')}" data-ajax="payment" data-kind="paid" style="display:inline">
+              actionCell.innerHTML = `<form method="post" action="${form.action.replace('/undo-paid/', '/mark-paid/')}" data-ajax="payment" data-kind="paid" style="display:inline-flex; gap:6px; align-items:center;">
                 <input type="hidden" name="csrf_token" value="${csrf}">
+                <input type="text" name="notes" placeholder="Ref ID / Notes" value="${oldNoteVal}" style="font-size:11px; padding:3px 6px; border:1px solid var(--slate-200); border-radius:6px; width:110px;">
                 <button class="btn success sm"><i data-lucide="check"></i> Mark paid</button>
               </form>`;
             }
