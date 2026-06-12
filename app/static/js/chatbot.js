@@ -23,12 +23,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Toggle Chatbot
+  const badgeEl = document.getElementById("chatbotBadge");
+  const startersEl = document.getElementById("chatbotStarters");
+  
   launcher.addEventListener("click", () => {
     launcher.classList.toggle("active");
     windowEl.classList.toggle("open");
     if (windowEl.classList.contains("open")) {
       input.focus();
       scrollToBottom();
+      if (badgeEl) badgeEl.style.display = "none";
     }
   });
 
@@ -235,4 +239,106 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return result.join("");
   }
+
+  // Render starter chips dynamically
+  function renderStarters(starters) {
+    if (!startersEl) return;
+    startersEl.innerHTML = "";
+    startersEl.style.display = "flex";
+    
+    starters.forEach(text => {
+      const chip = document.createElement("div");
+      chip.className = "chatbot-starter-chip";
+      chip.textContent = text;
+      chip.addEventListener("click", () => {
+        input.value = text;
+        form.dispatchEvent(new Event("submit"));
+        startersEl.style.display = "none";
+      });
+      startersEl.appendChild(chip);
+    });
+  }
+
+  // Fetch proactive alerts and suggestion chips
+  async function runProactiveCheck() {
+    try {
+      const res = await fetch("/chatbot/proactive-check");
+      const data = await res.json();
+      
+      if (data.notification) {
+        if (badgeEl) badgeEl.style.display = "block";
+        
+        if (chatHistory.length === 0) {
+          msgsContainer.innerHTML = ""; // Clear initial instructions to prioritize notification alert
+          appendMessage("assistant", data.notification);
+          chatHistory.push({
+            role: "model",
+            parts: [{ text: data.notification }]
+          });
+          saveHistory();
+        }
+      }
+      
+      if (data.starters && data.starters.length > 0) {
+        renderStarters(data.starters);
+      }
+    } catch (e) {
+      console.error("Proactive check failed", e);
+    }
+  }
+
+  // Web Speech API Microphone Integration
+  const micBtn = document.getElementById("chatbotMicBtn");
+  if (micBtn) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      
+      let isListening = false;
+      
+      micBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isListening) {
+          recognition.start();
+        } else {
+          recognition.stop();
+        }
+      });
+      
+      recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add("listening");
+        input.placeholder = "Listening...";
+      };
+      
+      recognition.onend = () => {
+        isListening = false;
+        micBtn.classList.remove("listening");
+        input.placeholder = "Ask about your loans...";
+      };
+      
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        input.focus();
+      };
+      
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        input.placeholder = "Speech error. Try again...";
+        setTimeout(() => {
+          input.placeholder = "Ask about your loans...";
+        }, 2000);
+      };
+    } else {
+      micBtn.style.display = "none";
+    }
+  }
+
+  // Trigger Proactive dashboard warning checks
+  runProactiveCheck();
 });

@@ -29,6 +29,7 @@
   <!-- Chatbot Widget -->
   <button class="chatbot-launcher" id="chatbotLauncher" title="Open Assistant">
     <i data-lucide="message-square"></i>
+    <span class="chatbot-badge" id="chatbotBadge" style="display:none; position:absolute; top:-2px; right:-2px; width:10px; height:10px; background-color:#EF4444; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 2px rgba(239,68,68,0.4); animation:badgePulse 2s infinite;"></span>
   </button>
   
   <div class="chatbot-window" id="chatbotWindow">
@@ -62,8 +63,12 @@
     </div>
 
     <div class="chatbot-messages" id="chatbotMessages"></div>
+    <div class="chatbot-starters" id="chatbotStarters" style="display:none; flex-wrap:wrap; gap:6px; padding:12px; border-top:1px solid var(--slate-100); background:#fff; max-height:100px; overflow-y:auto;"></div>
     <form class="chatbot-input-area" id="chatbotForm">
       <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Ask about your loans..." autocomplete="off">
+      <button type="button" class="chatbot-mic-btn" id="chatbotMicBtn" title="Speak message" style="background:none; border:none; color:var(--slate-400); cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:background 0.15s, color 0.15s;">
+        <i data-lucide="mic"></i>
+      </button>
       <button type="button" class="chatbot-help-btn" id="chatbotHelpBtn" title="Help Guide">
         <i data-lucide="help-circle"></i>
       </button>

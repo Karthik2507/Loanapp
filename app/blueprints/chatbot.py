@@ -3,8 +3,9 @@ from datetime import datetime, date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app import db
-from app.models import Loan, Schedule, ActivityLog, LoanAuditLog, Setting
-from app.utils import generate_amortization, update_loan_progress, emi_amount, recalc_unpaid_with_new_rate
+from app.models import Loan, Schedule, ActivityLog, LoanAuditLog, Setting, RecalculationHistory
+from app.utils import generate_amortization, update_loan_progress, emi_amount, recalc_unpaid_with_new_rate, recalc_with_lumpsum
+
 
 chatbot_bp = Blueprint("chatbot", __name__, url_prefix="/chatbot")
 
@@ -264,6 +265,187 @@ def update_loan_metadata(loan_id: str, field: str, value: str):
         return {"error": f"Failed to update metadata: {str(e)}"}
 
 
+def simulate_recalculation(loan_id: str, extra_monthly: float = 0.0, lumpsum: float = 0.0):
+    """Simulate the financial impact of adding an extra monthly payment or a one-time lump-sum prepayment to a specific loan.
+    This function is strictly a read-only simulation and DOES NOT modify the database.
+    It returns how much interest the user will save and how many months earlier the loan will be paid off.
+    All parameters must be floats.
+    """
+    loan = Loan.query.filter_by(user_id=current_user.id, loan_id=loan_id.strip()).first()
+    if not loan:
+        return {"error": f"Loan with ID '{loan_id}' not found."}
+        
+    unpaid = sorted([s for s in loan.schedules if s.payment_status != "Paid"], key=lambda x: x.month_index)
+    if not unpaid:
+        return {"error": "This loan is already completed. No unpaid installments remaining."}
+        
+    original_remaining_interest = sum(s.interest for s in unpaid)
+    original_remaining_months = len(unpaid)
+    
+    monthly_rate = (loan.interest_rate / 100.0) / 12.0
+    rem_sim = loan.remaining_balance
+    
+    # Apply one-time lump-sum in Month 1 (if any)
+    rem_sim = max(rem_sim - (lumpsum or 0.0), 0.0)
+    
+    sim_interest_total = 0.0
+    sim_months_taken = 0
+    
+    for s in unpaid:
+        if rem_sim <= 0.01:
+            break
+        interest = round(rem_sim * monthly_rate, 2)
+        principal = round((s.emi - interest) + (extra_monthly or 0.0), 2)
+        if principal >= rem_sim:
+            sim_interest_total += interest
+            sim_months_taken += 1
+            rem_sim = 0.0
+            break
+        else:
+            sim_interest_total += interest
+            rem_sim = round(rem_sim - principal, 2)
+            sim_months_taken += 1
+            
+    interest_savings = max(round(original_remaining_interest - sim_interest_total, 2), 0.0)
+    months_saved = max(original_remaining_months - sim_months_taken, 0)
+    
+    return {
+        "loan_id": loan_id,
+        "loan_name": loan.loan_name,
+        "interest_savings": interest_savings,
+        "months_saved": months_saved,
+        "original_unpaid_interest": original_remaining_interest,
+        "simulated_interest": sim_interest_total,
+        "original_unpaid_tenure": original_remaining_months,
+        "simulated_tenure": sim_months_taken,
+        "extra_monthly": extra_monthly,
+        "lumpsum": lumpsum
+    }
+
+
+def apply_recalculation_change(loan_id: str, extra_monthly: float = 0.0, lumpsum: float = 0.0):
+    """Permanently apply the prepayment change (extra monthly payment or lumpsum) to the database for a specific loan.
+    This modifies the loan's amortization schedule and outstanding balance.
+    All parameters must be floats.
+    """
+    loan = Loan.query.filter_by(user_id=current_user.id, loan_id=loan_id.strip()).first()
+    if not loan:
+        return {"error": f"Loan with ID '{loan_id}' not found."}
+        
+    try:
+        summary = ""
+        if lumpsum > 0:
+            recalc_with_lumpsum(loan, lumpsum)
+            summary += f"Lump-sum {lumpsum} applied. "
+            
+        if extra_monthly > 0:
+            unpaid = sorted([s for s in loan.schedules if s.payment_status != "Paid"], key=lambda x: x.month_index)
+            monthly_rate = (loan.interest_rate / 100.0) / 12.0
+            rem = loan.remaining_balance
+            cleared_at = None
+            for s in unpaid:
+                interest = round(rem * monthly_rate, 2)
+                principal = round((s.emi - interest) + extra_monthly, 2)
+                if principal >= rem:
+                    principal = round(rem, 2)
+                    s.emi = round(principal + interest, 2)
+                    s.principal = principal
+                    s.interest = interest
+                    s.remaining_balance = 0
+                    s.is_revised = True
+                    cleared_at = s.month_index
+                    for later in unpaid:
+                        if later.month_index > s.month_index:
+                            db.session.delete(later)
+                    break
+                else:
+                    s.principal = principal
+                    s.interest = interest
+                    s.emi = round(principal + interest, 2)
+                    rem = round(rem - principal, 2)
+                    s.remaining_balance = rem
+                    s.is_revised = True
+            summary += f"Extra {extra_monthly}/month applied" + (f" — closes at installment {cleared_at}" if cleared_at else "")
+            
+        update_loan_progress(loan)
+        db.session.add(RecalculationHistory(loan_id=loan.id, recalc_type="EXTRA", payload="", summary=summary))
+        db.session.add(ActivityLog(user_id=current_user.id, loan_id=loan.id, action="RECALC", detail=summary))
+        db.session.commit()
+        return {"success": True, "message": f"Prepayment changes applied to loan '{loan.loan_name}' (ID: {loan.loan_id}): {summary}"}
+    except Exception as e:
+        db.session.rollback()
+        return {"error": f"Failed to apply changes: {str(e)}"}
+
+
+@chatbot_bp.route("/proactive-check", methods=["GET"])
+@login_required
+def proactive_check():
+    from datetime import date, timedelta
+    from app.models import Setting
+    
+    loans = current_user.loans.filter_by(is_archived=False).all()
+    starters = []
+    notification = None
+    
+    # 1. Overdue check
+    overdue_loans = [l for l in loans if l.loan_status == "Overdue"]
+    if overdue_loans:
+        notification = f"I noticed you have an overdue loan: **{overdue_loans[0].loan_name}**. Let's check how we can clear it."
+        starters.append(f"How can I resolve my overdue loan {overdue_loans[0].loan_id}?")
+        
+    # 2. Upcoming balloon check (within 45 days)
+    if not notification:
+        today = date.today()
+        upcoming_balloon = None
+        for l in loans:
+            if l.balloon_date and today <= l.balloon_date <= today + timedelta(days=45):
+                from app.models import BalloonPayment
+                bp = BalloonPayment.query.filter_by(loan_id=l.id, paid=False).first()
+                if bp:
+                    upcoming_balloon = l
+                    break
+        if upcoming_balloon:
+            notification = f"I noticed you have a balloon payment due soon on **{upcoming_balloon.loan_name}** ({upcoming_balloon.balloon_date.strftime('%d %b %Y')}). Let's discuss plans to pay it off."
+            starters.append(f"Suggest options for my upcoming balloon payment on {upcoming_balloon.loan_id}")
+            
+    # 3. High DTI ratio check
+    if not notification:
+        income_setting = Setting.query.filter_by(user_id=current_user.id, key="monthly_income").first()
+        income = float(income_setting.value) if income_setting and income_setting.value else 0.0
+        if income > 0:
+            today = date.today()
+            total_monthly_emi = sum(s.emi for l in loans for s in l.schedules if s.payment_status != "Paid" and s.payment_date.year == today.year and s.payment_date.month == today.month)
+            if total_monthly_emi > 0:
+                dti = (total_monthly_emi / income) * 100
+                if dti > 40:
+                    notification = f"Your current Debt-to-Income (DTI) ratio is high (**{dti:.1f}%**). Let's review options to consolidate or lower EMIs."
+                    starters.append("How can I lower my DTI ratio?")
+                    
+    # 4. High interest rate check
+    if not notification:
+        high_rate_loan = None
+        for l in loans:
+            if l.loan_status != "Completed" and l.interest_rate >= 10.0:
+                high_rate_loan = l
+                break
+        if high_rate_loan:
+            notification = f"I noticed your loan **{high_rate_loan.loan_name}** has a high interest rate of **{high_rate_loan.interest_rate}%**. Let's discuss refinancing ideas."
+            starters.append(f"How can I refinance my loan {high_rate_loan.loan_id}?")
+            
+    # Default starters if no alerts
+    if not starters:
+        starters = [
+            "Show me a summary of my active loans",
+            "What happens if I make a lump-sum prepayment?",
+            "How can I save interest on my loans?"
+        ]
+        
+    return jsonify({
+        "notification": notification,
+        "starters": starters
+    })
+
+
 SYSTEM_INSTRUCTION = """
 You are the LoanLedger AI Assistant. You help users manage their loans.
 You can list loans, show details, create new loans, change rates, tenures, and other details.
@@ -285,8 +467,15 @@ When updating a loan:
 - If they want to change other details (name, bank, notes, category), call `update_loan_metadata`.
 - If a tool returns an error (e.g. duplicate loan ID or non-existent loan ID), explain the error to the user politely.
 
+Interactive Recalculation Simulations:
+- If the user asks a 'what if' question regarding increasing their monthly payments, adding extra payments, or paying a lump-sum prepayment (e.g., "What happens if I increase my auto loan payment by 2000?" or "What happens if I make a prepayment of 50000?"), call the `simulate_recalculation` tool.
+- Present the results of the simulation to the user clearly (e.g., "You will save ₹18,400 in interest and pay off the loan 5 months earlier.").
+- ALWAYS ask the user: "Would you like me to apply this change?" or "Shall I apply this change?".
+- If the user confirms (e.g., "yes", "apply it", "sure", "please do"), call the `apply_recalculation_change` tool to commit it to the database, and report the completion.
+
 Always keep your tone professional, helpful, and concise.
 """
+
 
 @chatbot_bp.route("/chat", methods=["POST"])
 @login_required
@@ -326,7 +515,16 @@ def chat():
         genai.configure(api_key=api_key)
         
         # Define tools
-        tools = [list_loans, get_loan_details, create_loan, update_loan_rate, update_loan_tenure, update_loan_metadata]
+        tools = [
+            list_loans,
+            get_loan_details,
+            create_loan,
+            update_loan_rate,
+            update_loan_tenure,
+            update_loan_metadata,
+            simulate_recalculation,
+            apply_recalculation_change
+        ]
         
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
