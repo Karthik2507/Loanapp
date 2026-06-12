@@ -18,48 +18,241 @@
   </div>
 </div>
 
-<div class="kpi-grid">
-  <div class="kpi accent"><div class="label">Loan Amount</div><div class="value">{{ loan.loan_amount|money }}</div></div>
-  <div class="kpi"><div class="label">Interest Rate</div><div class="value">{{ '%.2f'|format(loan.interest_rate) }}%</div></div>
-  <div class="kpi"><div class="label">Tenure</div><div class="value">{{ loan.tenure_months }} mo</div></div>
-  <div class="kpi"><div class="label">Down Payment</div><div class="value">{{ loan.down_payment|money }}</div></div>
-  <div class="kpi"><div class="label">Remaining</div><div class="value">{{ loan.remaining_balance|money }}</div></div>
-  <div class="kpi"><div class="label">Completion</div><div class="value">{{ '%.0f'|format(loan.completion_percentage) }}%</div></div>
+<!-- Dynamic Tabs Navigation -->
+<div class="tabs-header" style="margin-bottom: 24px; border-bottom: 1px solid var(--slate-200); display: flex; gap: 24px;">
+  <button class="tab-btn active" data-tab="tab-overview" style="background:none; border:none; padding:12px 4px; font-weight:600; color:var(--blue-700); border-bottom:2px solid var(--blue-600); cursor:pointer; font-size:14px; outline:none;">Overview & Notes</button>
+  <button class="tab-btn" data-tab="tab-refinance" style="background:none; border:none; padding:12px 4px; font-weight:500; color:var(--slate-500); cursor:pointer; font-size:14px; outline:none; transition:color 0.15s;">Refinance Simulator</button>
+  <button class="tab-btn" data-tab="tab-history" style="background:none; border:none; padding:12px 4px; font-weight:500; color:var(--slate-500); cursor:pointer; font-size:14px; outline:none; transition:color 0.15s;">History & Logs</button>
 </div>
 
-<div class="grid grid-2">
-  <div class="card">
-    <div class="card-header"><h3>Overview</h3></div>
-    <div class="card-body">
-      <table class="tbl">
-        <tr><td>Start Date</td><td>{{ loan.start_date|fdate }}</td></tr>
-        <tr><td>Created</td><td>{{ loan.created_at|fdate }}</td></tr>
-        {% if loan.balloon_date %}<tr><td>Balloon Date</td><td>{{ loan.balloon_date|fdate }}</td></tr>{% endif %}
-        {% if loan.balloon_amount %}<tr><td>Balloon Amount</td><td>{{ loan.balloon_amount|money }}</td></tr>{% endif %}
-        {% if loan.closed_at %}<tr><td>Closed</td><td>{{ loan.closed_at|fdate }}</td></tr>{% endif %}
-        {% if loan.notes %}<tr><td>Notes</td><td>{{ loan.notes }}</td></tr>{% endif %}
-      </table>
-    </div>
+<!-- Tab 1: Overview Panel -->
+<div class="tab-panel" id="tab-overview">
+  <div class="kpi-grid">
+    <div class="kpi accent"><div class="label">Loan Amount</div><div class="value">{{ loan.loan_amount|money }}</div></div>
+    <div class="kpi"><div class="label">Interest Rate</div><div class="value">{{ '%.2f'|format(loan.interest_rate) }}%</div></div>
+    <div class="kpi"><div class="label">Tenure</div><div class="value">{{ loan.tenure_months }} mo</div></div>
+    <div class="kpi"><div class="label">Down Payment</div><div class="value">{{ loan.down_payment|money }}</div></div>
+    <div class="kpi"><div class="label">Remaining</div><div class="value">{{ loan.remaining_balance|money }}</div></div>
+    <div class="kpi"><div class="label">Completion</div><div class="value">{{ '%.0f'|format(loan.completion_percentage) }}%</div></div>
   </div>
-  <div class="card">
-    <div class="card-header">
-      <h3>Closure</h3>
-      <span style="font-size:12px;color:var(--slate-500)">{{ 'Eligible' if loan.remaining_balance <= 0.01 else 'Not eligible yet' }}</span>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header"><h3>Overview</h3></div>
+      <div class="card-body">
+        <table class="tbl">
+          <tr><td>Start Date</td><td>{{ loan.start_date|fdate }}</td></tr>
+          <tr><td>Created</td><td>{{ loan.created_at|fdate }}</td></tr>
+          {% if loan.balloon_date %}<tr><td>Balloon Date</td><td>{{ loan.balloon_date|fdate }}</td></tr>{% endif %}
+          {% if loan.balloon_amount %}<tr><td>Balloon Amount</td><td>{{ loan.balloon_amount|money }}</td></tr>{% endif %}
+          {% if loan.closed_at %}<tr><td>Closed</td><td>{{ loan.closed_at|fdate }}</td></tr>{% endif %}
+          {% if loan.notes %}<tr><td>Notes</td><td>{{ loan.notes }}</td></tr>{% endif %}
+        </table>
+      </div>
     </div>
-    <div class="card-body">
-      {% if loan.remaining_balance <= 0.01 and loan.loan_status != 'Completed' %}
-        <div class="insight"><i data-lucide="check-circle-2"></i> This loan is eligible for closure</div>
-        <form method="post" action="{{ url_for('loans.close', loan_pk=loan.id) }}" data-confirm="Are you sure you want to close this loan?">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn success"><i data-lucide="check-circle-2"></i> Close Loan</button>
-        </form>
-      {% elif loan.loan_status == 'Completed' %}
-        <div class="insight"><i data-lucide="check-circle-2"></i> Loan closed on {{ loan.closed_at|fdate }}. Final amount: {{ loan.final_amount|money }}</div>
-        {% if loan.closure_notes %}<p style="color:var(--slate-500);font-size:13px;margin-top:8px">{{ loan.closure_notes }}</p>{% endif %}
-      {% else %}
-        <p style="color:var(--slate-500)">Closure becomes available once all installments are paid and the remaining balance reaches zero (including any balloon payment).</p>
-      {% endif %}
+    <div class="card">
+      <div class="card-header">
+        <h3>Closure</h3>
+        <span style="font-size:12px;color:var(--slate-500)">{{ 'Eligible' if loan.remaining_balance <= 0.01 else 'Not eligible yet' }}</span>
+      </div>
+      <div class="card-body">
+        {% if loan.remaining_balance <= 0.01 and loan.loan_status != 'Completed' %}
+          <div class="insight"><i data-lucide="check-circle-2"></i> This loan is eligible for closure</div>
+          <form method="post" action="{{ url_for('loans.close', loan_pk=loan.id) }}" data-confirm="Are you sure you want to close this loan?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn success"><i data-lucide="check-circle-2"></i> Close Loan</button>
+          </form>
+        {% elif loan.loan_status == 'Completed' %}
+          <div class="insight"><i data-lucide="check-circle-2"></i> Loan closed on {{ loan.closed_at|fdate }}. Final amount: {{ loan.final_amount|money }}</div>
+          {% if loan.closure_notes %}<p style="color:var(--slate-500);font-size:13px;margin-top:8px">{{ loan.closure_notes }}</p>{% endif %}
+        {% else %}
+          <p style="color:var(--slate-500)">Closure becomes available once all installments are paid and the remaining balance reaches zero (including any balloon payment).</p>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Tab 2: Refinance Simulator Panel -->
+<div class="tab-panel" id="tab-refinance" style="display:none;">
+  <div class="grid grid-2">
+    <div class="card pad">
+      <h3 style="margin-bottom:12px">Refinancing Parameters</h3>
+      <form id="refinanceForm" onsubmit="return false;">
+        <div class="form-row">
+          <label>New Interest Rate (%)</label>
+          <input type="number" id="refNewRate" step="0.01" min="0" max="100" placeholder="e.g. 7.5" value="{{ '%.2f'|format(loan.interest_rate - 1.0) if loan.interest_rate > 1.0 else '7.00' }}">
+        </div>
+        <div class="form-row">
+          <label>Competitor Bank Name</label>
+          <input type="text" id="refBank" placeholder="e.g. HDFC Bank">
+        </div>
+        <div class="form-row">
+          <label>Processing Fee (Fixed Amount)</label>
+          <input type="number" id="refFee" step="any" min="0" placeholder="e.g. 5000" value="0">
+        </div>
+        <div class="form-row">
+          <label>Tenure (months)</label>
+          <input type="number" id="refTenure" min="1" max="600" value="{{ remaining_tenure }}">
+          <small style="color:var(--slate-500)">Defaults to remaining unpaid tenure: {{ remaining_tenure }} months</small>
+        </div>
+      </form>
+    </div>
+    
+    <div class="card pad" style="background: var(--slate-50); border-color: var(--slate-200);">
+      <h3 style="margin-bottom:16px">Savings Projection</h3>
+      
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
+          <span style="color:var(--slate-500)">Current Remaining Balance</span>
+          <strong style="color:var(--slate-800)">{{ loan.remaining_balance|money }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
+          <span style="color:var(--slate-500)">Current Unpaid Interest</span>
+          <strong style="color:var(--slate-800)">{{ remaining_interest|money }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
+          <span style="color:var(--slate-500)">Simulated New EMI</span>
+          <strong id="refNewEmi" style="color:var(--slate-800)">-</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
+          <span style="color:var(--slate-500)">Simulated New Interest</span>
+          <strong id="refNewInterest" style="color:var(--slate-800)">-</strong>
+        </div>
+        
+        <div style="background:var(--blue-50); border:1px solid var(--blue-100); border-radius:10px; padding:16px; margin-top:8px; text-align:center;">
+          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600; letter-spacing:0.04em;">Estimated Net Savings</div>
+          <div id="refSavingsBlock" style="font-size:24px; font-weight:700; color:var(--blue-700); margin-top:4px;">-</div>
+          <div id="refSummaryText" style="font-size:12px; color:var(--slate-500); margin-top:8px;">Enter rate parameters to show savings estimate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: History & Logs Panel -->
+<div class="tab-panel" id="tab-history" style="display:none;">
+  <div class="card pad">
+    <h3 style="margin-bottom:16px">Activity & Audit Timeline</h3>
+    {% if history %}
+      <div class="timeline" style="position:relative; padding-left:32px; margin-left:8px;">
+        <div class="timeline-line" style="position:absolute; left:7px; top:12px; bottom:12px; width:2px; background:var(--slate-200);"></div>
+        {% for h in history %}
+          <div class="timeline-item" style="position:relative; margin-bottom:24px;">
+            <div class="timeline-dot" style="position:absolute; left:-31px; top:4px; width:14px; height:14px; border-radius:50%; border:2.5px solid {% if h.type=='audit' %}var(--warning){% else %}var(--blue-500){% endif %}; background:#fff;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+              <div>
+                <strong style="color:var(--slate-800); font-size:14px;">{{ h.title }}</strong>
+                <p style="color:var(--slate-500); font-size:13px; margin-top:4px;">{{ h.detail }}</p>
+              </div>
+              <span style="color:var(--slate-400); font-size:12px;">{{ h.date|fdate }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <i data-lucide="history"></i>
+        <p>No activity logs recorded for this loan yet.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Dynamic Tabs Toggling
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        tabBtns.forEach(b => {
+          b.classList.remove('active');
+          b.style.color = 'var(--slate-500)';
+          b.style.borderBottom = 'none';
+          b.style.fontWeight = '500';
+        });
+        tabPanels.forEach(p => p.style.display = 'none');
+        
+        this.classList.add('active');
+        this.style.color = 'var(--blue-700)';
+        this.style.borderBottom = '2px solid var(--blue-600)';
+        this.style.fontWeight = '600';
+        
+        const activeTab = this.getAttribute('data-tab');
+        document.getElementById(activeTab).style.display = 'block';
+      });
+    });
+
+    // 2. Refinance Calculator Simulator
+    const balance = parseFloat("{{ loan.remaining_balance }}");
+    const currentInterest = parseFloat("{{ remaining_interest }}");
+    
+    const refNewRateInput = document.getElementById('refNewRate');
+    const refFeeInput = document.getElementById('refFee');
+    const refTenureInput = document.getElementById('refTenure');
+    
+    const refNewEmiVal = document.getElementById('refNewEmi');
+    const refNewInterestVal = document.getElementById('refNewInterest');
+    const refSavingsBlock = document.getElementById('refSavingsBlock');
+    const refSummaryText = document.getElementById('refSummaryText');
+    
+    const symbol = "{{ current_user.preferred_currency|money }}".split(' ')[0] || "₹";
+    
+    function formatCurrency(val) {
+      return symbol + ' ' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    
+    function calculateRefinancing() {
+      const newRate = parseFloat(refNewRateInput.value || 0);
+      const fee = parseFloat(refFeeInput.value || 0);
+      const tenure = parseInt(refTenureInput.value || 0);
+      
+      if (newRate <= 0 || tenure <= 0 || isNaN(newRate) || isNaN(tenure)) {
+        refNewEmiVal.textContent = '-';
+        refNewInterestVal.textContent = '-';
+        refSavingsBlock.textContent = '-';
+        refSummaryText.textContent = 'Please enter valid rate and tenure parameters.';
+        return;
+      }
+      
+      const principal = balance + fee;
+      const r = (newRate / 100.0) / 12.0;
+      let newEmi = 0;
+      if (r === 0) {
+        newEmi = principal / tenure;
+      } else {
+        newEmi = principal * r * Math.pow(1 + r, tenure) / (Math.pow(1 + r, tenure) - 1);
+      }
+      
+      const newTotalPayable = newEmi * tenure;
+      const newInterest = newTotalPayable - principal;
+      const netSavings = currentInterest - newInterest - fee;
+      
+      refNewEmiVal.textContent = formatCurrency(newEmi);
+      refNewInterestVal.textContent = formatCurrency(newInterest);
+      
+      refSavingsBlock.textContent = formatCurrency(netSavings);
+      if (netSavings > 0) {
+        refSavingsBlock.style.color = 'var(--emerald-600)';
+        refSummaryText.textContent = `By refinancing, you save ${formatCurrency(netSavings)} in total interest payments!`;
+      } else if (netSavings < 0) {
+        refSavingsBlock.style.color = 'var(--danger)';
+        refSummaryText.textContent = `Refinancing would result in a net loss of ${formatCurrency(Math.abs(netSavings))}.`;
+      } else {
+        refSavingsBlock.style.color = 'var(--slate-800)';
+        refSummaryText.textContent = 'Refinancing yields no net financial difference.';
+      }
+    }
+    
+    if (refNewRateInput) {
+      refNewRateInput.addEventListener('input', calculateRefinancing);
+      refFeeInput.addEventListener('input', calculateRefinancing);
+      refTenureInput.addEventListener('input', calculateRefinancing);
+      calculateRefinancing();
+    }
+});
+</script>
 {% endblock %}

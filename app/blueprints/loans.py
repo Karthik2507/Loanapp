@@ -213,7 +213,42 @@ def edit(loan_pk):
 @login_required
 def details(loan_pk):
     loan = _get_loan_or_404(loan_pk)
-    return render_template("loans/details.html", loan=loan)
+    
+    # Fetch audit and activity logs
+    audit_logs = LoanAuditLog.query.filter_by(loan_id=loan.id).all()
+    activity_logs = ActivityLog.query.filter_by(loan_id=loan.id).all()
+    
+    # Format and merge history logs
+    history = []
+    for a in audit_logs:
+        history.append({
+            "type": "audit",
+            "title": f"Field '{a.field.replace('_', ' ').title()}' updated",
+            "detail": f"Changed from '{a.old_value}' to '{a.new_value}'",
+            "date": a.created_at
+        })
+    for act in activity_logs:
+        history.append({
+            "type": "activity",
+            "title": act.action.replace("_", " ").title(),
+            "detail": act.detail or "",
+            "date": act.created_at
+        })
+        
+    history.sort(key=lambda x: x["date"], reverse=True)
+    
+    # Compute active loan remaining interest and tenure for refinance simulation
+    unpaid_schedules = [s for s in loan.schedules if s.payment_status != "Paid"]
+    remaining_interest = sum(s.interest for s in unpaid_schedules)
+    remaining_tenure = len(unpaid_schedules)
+    
+    return render_template(
+        "loans/details.html", 
+        loan=loan, 
+        history=history,
+        remaining_interest=round(remaining_interest, 2),
+        remaining_tenure=remaining_tenure
+    )
 
 
 @loans_bp.route("/<int:loan_pk>/archive", methods=["POST"])
