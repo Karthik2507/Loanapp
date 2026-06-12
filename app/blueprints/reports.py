@@ -30,27 +30,48 @@ def index():
         if l.loan_status != "Completed":
             by_bank[l.bank_name] = by_bank.get(l.bank_name, 0.0) + (l.remaining_balance or 0.0)
             
-    # 2. Fiscal Year choices based on oldest loan start date
+    from app.models import Setting
+    import calendar
+    from dateutil.relativedelta import relativedelta
+    from datetime import timedelta
+    
+    # 2. Fiscal Year choices based on user preferences and oldest loan start date
+    fy_setting = Setting.query.filter_by(user_id=current_user.id, key="fy_start_month").first()
+    M = int(fy_setting.value) if fy_setting and fy_setting.value else 4
+    
     oldest_loan = current_user.loans.order_by(Loan.start_date.asc()).first()
     start_year = oldest_loan.start_date.year if oldest_loan else date.today().year
     current_year = date.today().year
     
     fy_choices = []
+    month_name = calendar.month_abbr[M]
+    end_month_index = 12 if M == 1 else M - 1
+    end_month_name = calendar.month_abbr[end_month_index]
+    
     for y in range(start_year - 1, current_year + 1):
+        if M == 1:
+            label = f"FY {y} ({month_name} {y} - {end_month_name} {y})"
+        else:
+            label = f"FY {y}-{str(y+1)[2:]} ({month_name} {y} - {end_month_name} {y+1})"
         fy_choices.append({
             "val": y,
-            "label": f"FY {y}-{str(y+1)[2:]} (Apr {y} - Mar {y+1})"
+            "label": label
         })
         
     # 3. Dynamic Fiscal Year Tax Summary Report
     selected_fy = request.args.get("fy", type=int)
     fy_data = None
     if selected_fy:
-        fy_start = date(selected_fy, 4, 1)
-        fy_end = date(selected_fy + 1, 3, 31)
+        fy_start = date(selected_fy, M, 1)
+        fy_end = fy_start + relativedelta(years=1) - timedelta(days=1)
         
+        if M == 1:
+            fy_label = f"FY {selected_fy}"
+        else:
+            fy_label = f"FY {selected_fy}-{str(selected_fy+1)[2:]}"
+            
         fy_data = {
-            "label": f"FY {selected_fy}-{str(selected_fy+1)[2:]}",
+            "label": fy_label,
             "loans": [],
             "total_principal": 0.0,
             "total_interest": 0.0,

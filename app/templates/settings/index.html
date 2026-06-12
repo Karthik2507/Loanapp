@@ -5,79 +5,167 @@
 <div class="page-header"><div class="title-block"><h1>Settings</h1><div class="sub">Manage your profile, security and preferences.</div></div></div>
 
 <div class="grid grid-2">
-  <div class="card">
-    <div class="card-header"><h3>Profile</h3></div>
-    <div class="card-body">
-      <form method="post" action="{{ url_for('settings.update_profile') }}">
-        {{ profile_form.hidden_tag() }}
-        <div class="form-row"><label>Full Name</label>{{ profile_form.full_name() }}</div>
-        <div class="form-row"><label>Username</label>{{ profile_form.username() }}</div>
-        <div class="form-row"><label>Email</label>{{ profile_form.email() }}</div>
-        <button class="btn">Save profile</button>
-      </form>
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <!-- Profile Card -->
+    <div class="card">
+      <div class="card-header"><h3>Profile</h3></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.update_profile') }}">
+          {{ profile_form.hidden_tag() }}
+          <div class="form-row"><label>Full Name</label>{{ profile_form.full_name() }}</div>
+          <div class="form-row"><label>Username</label>{{ profile_form.username() }}</div>
+          <div class="form-row"><label>Email</label>{{ profile_form.email() }}</div>
+          <button class="btn">Save profile</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Change Password Card -->
+    <div class="card">
+      <div class="card-header"><h3>Change Password</h3></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.change_password') }}">
+          {{ pwd_form.hidden_tag() }}
+          <div class="form-row">
+            <label>Current password</label>
+            <div class="password-input-wrapper">
+              {{ pwd_form.current_password() }}
+              <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>New password</label>
+            <div class="password-input-wrapper">
+              {{ pwd_form.new_password() }}
+              <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Confirm new password</label>
+            <div class="password-input-wrapper">
+              {{ pwd_form.confirm() }}
+              <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
+          </div>
+          <button class="btn">Change password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Database Backup & Restore Card -->
+    <div class="card">
+      <div class="card-header"><h3>Database Backup & Restore</h3></div>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <h4 style="margin:0 0 4px 0; font-size:14px; color:var(--slate-700);">Download SQLite DB</h4>
+          <p style="font-size:12px; color:var(--slate-500); margin:0 0 10px 0;">Backup your complete portfolio locally including all loans, audit history, and user settings.</p>
+          <a href="{{ url_for('settings.download_backup') }}" class="btn secondary sm" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="download" style="width:16px; height:16px;"></i> Download Backup
+          </a>
+        </div>
+        
+        <hr style="border:0; border-top:1px solid var(--slate-200); margin:0;">
+        
+        <div>
+          <h4 style="margin:0 0 4px 0; font-size:14px; color:var(--slate-700);">Restore Database</h4>
+          <p style="font-size:12px; color:var(--slate-500); margin:0 0 10px 0;">Restore records from a previously downloaded SQLite file. <strong style="color:var(--red-600);">This replaces current data.</strong></p>
+          <form method="post" action="{{ url_for('settings.restore_backup') }}" enctype="multipart/form-data" onsubmit="return confirm('Are you absolutely sure you want to restore this database? All current loans and settings will be permanently overwritten.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-row" style="margin-bottom:10px;">
+              <input type="file" name="backup_file" accept=".sqlite3,.db" required style="font-size:12px; padding:6px; border:1px dashed var(--slate-300); border-radius:8px; width:100%; font-family:inherit;">
+            </div>
+            <button type="submit" class="btn danger sm" style="display:inline-flex; align-items:center; gap:6px;">
+              <i data-lucide="upload" style="width:16px; height:16px;"></i> Upload & Restore
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-header"><h3>Preferences</h3></div>
-    <div class="card-body">
-      <form method="post" action="{{ url_for('settings.update_preferences') }}">
-        {{ pref_form.hidden_tag() }}
-        <div class="form-row"><label>Currency</label>{{ pref_form.preferred_currency() }}</div>
-        <div class="form-row"><label>Date format</label>{{ pref_form.preferred_date_format() }}</div>
-        <div class="form-row"><label>Monthly Net Income</label>{{ pref_form.monthly_income(placeholder="e.g. 50000 (for DTI ratio)") }}{% for e in pref_form.monthly_income.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
-        <div class="form-row">
-          <label>Gemini API Key</label>
-          <div class="password-input-wrapper">
-            {{ pref_form.gemini_api_key(placeholder="API Key for AI chatbot (optional)", type="password") }}
-            <button type="button" class="password-toggle" aria-label="Toggle API Key visibility">
-              <i data-lucide="eye"></i>
-              <i data-lucide="eye-off"></i>
-            </button>
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <!-- Preferences Card -->
+    <div class="card">
+      <div class="card-header"><h3>Preferences</h3></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.update_preferences') }}">
+          {{ pref_form.hidden_tag() }}
+          <div class="form-row"><label>Currency</label>{{ pref_form.preferred_currency() }}</div>
+          <div class="form-row"><label>Date format</label>{{ pref_form.preferred_date_format() }}</div>
+          <div class="form-row"><label>Monthly Net Income</label>{{ pref_form.monthly_income(placeholder="e.g. 50000 (for DTI ratio)") }}{% for e in pref_form.monthly_income.errors %}<div class="err">{{ e }}</div>{% endfor %}</div>
+          <div class="form-row">
+            <label>Gemini API Key</label>
+            <div class="password-input-wrapper">
+              {{ pref_form.gemini_api_key(placeholder="API Key for AI chatbot (optional)", type="password") }}
+              <button type="button" class="password-toggle" aria-label="Toggle API Key visibility">
+                <i data-lucide="eye"></i>
+                <i data-lucide="eye-off"></i>
+              </button>
+            </div>
           </div>
-        </div>
-        <button class="btn">Save preferences</button>
-      </form>
+          
+          <div class="form-row">
+            <label>Fiscal Year Start Month</label>
+            {{ pref_form.fy_start_month() }}
+          </div>
+          
+          <div style="margin-top:16px; padding:12px; background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              {{ pref_form.reminders_enabled(id="reminders_enabled") }}
+              <label for="reminders_enabled" style="font-weight:600; margin:0; cursor:pointer; font-size:13px; color:var(--slate-700);">Enable Due Reminders</label>
+            </div>
+            <div class="reminder-conditional form-row" style="margin-bottom:10px; transition:opacity 0.2s;">
+              <label>Reminder Days Before Due Date</label>
+              {{ pref_form.reminder_days_before() }}
+            </div>
+            <div class="reminder-conditional form-row" style="margin-bottom:0; transition:opacity 0.2s;">
+              <label>Alert Email Target</label>
+              {{ pref_form.reminder_email(placeholder="Defaults to your login email") }}
+              {% for e in pref_form.reminder_email.errors %}<div class="err">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+          
+          <button class="btn" style="margin-top:16px;">Save preferences</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="card" style="margin-top:16px;max-width:560px">
-  <div class="card-header"><h3>Change Password</h3></div>
-  <div class="card-body">
-    <form method="post" action="{{ url_for('settings.change_password') }}">
-      {{ pwd_form.hidden_tag() }}
-      <div class="form-row">
-        <label>Current password</label>
-        <div class="password-input-wrapper">
-          {{ pwd_form.current_password() }}
-          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
-            <i data-lucide="eye"></i>
-            <i data-lucide="eye-off"></i>
-          </button>
-        </div>
-      </div>
-      <div class="form-row">
-        <label>New password</label>
-        <div class="password-input-wrapper">
-          {{ pwd_form.new_password() }}
-          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
-            <i data-lucide="eye"></i>
-            <i data-lucide="eye-off"></i>
-          </button>
-        </div>
-      </div>
-      <div class="form-row">
-        <label>Confirm new password</label>
-        <div class="password-input-wrapper">
-          {{ pwd_form.confirm() }}
-          <button type="button" class="password-toggle" aria-label="Toggle password visibility">
-            <i data-lucide="eye"></i>
-            <i data-lucide="eye-off"></i>
-          </button>
-        </div>
-      </div>
-      <button class="btn">Change password</button>
-    </form>
-  </div>
-</div>
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const enabledCheck = document.getElementById('reminders_enabled');
+    const reminderFields = document.querySelectorAll('.reminder-conditional');
+    
+    function toggleFields() {
+        if (enabledCheck) {
+            const active = enabledCheck.checked;
+            reminderFields.forEach(f => {
+                const inputs = f.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.disabled = !active;
+                });
+                f.style.opacity = active ? '1' : '0.5';
+                f.style.pointerEvents = active ? 'auto' : 'none';
+            });
+        }
+    }
+    
+    if (enabledCheck) {
+        enabledCheck.addEventListener('change', toggleFields);
+        toggleFields();
+    }
+});
+</script>
+{% endblock %}
 {% endblock %}

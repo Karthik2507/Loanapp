@@ -7,6 +7,21 @@ CURRENCY_CHOICES = [("INR", "₹ INR"), ("USD", "$ USD"), ("EUR", "€ EUR"), ("
 DATE_FMT_CHOICES = [("%d %b %Y", "31 Dec 2025"), ("%d/%m/%Y", "31/12/2025"), ("%Y-%m-%d", "2025-12-31"), ("%m/%d/%Y", "12/31/2025")]
 CATEGORY_CHOICES = [("Home", "Home"), ("Auto", "Auto"), ("Personal", "Personal"), ("Education", "Education"), ("Business", "Business"), ("Gold", "Gold"), ("Other", "Other")]
 STATUS_CHOICES = [("Active", "Active"), ("Completed", "Completed"), ("Overdue", "Overdue"), ("Balloon Pending", "Balloon Pending"), ("Archived", "Archived")]
+MONTH_CHOICES = [
+    ("1", "January"), ("2", "February"), ("3", "March"), ("4", "April"),
+    ("5", "May"), ("6", "June"), ("7", "July"), ("8", "August"),
+    ("9", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+]
+REMINDER_DAYS_CHOICES = [
+    ("1", "1 day before"),
+    ("2", "2 days before"),
+    ("3", "3 days before"),
+    ("5", "5 days before"),
+    ("7", "7 days before"),
+    ("10", "10 days before"),
+    ("14", "14 days before")
+]
+
 
 
 class RegisterForm(FlaskForm):
@@ -91,7 +106,12 @@ class PreferencesForm(FlaskForm):
     preferred_date_format = SelectField("Date format", choices=DATE_FMT_CHOICES)
     monthly_income = FloatField("Monthly Net Income", validators=[Optional(), NumberRange(min=0)])
     gemini_api_key = StringField("Gemini API Key", validators=[Optional()])
+    fy_start_month = SelectField("Fiscal Year Start Month", choices=MONTH_CHOICES, default="4")
+    reminders_enabled = BooleanField("Enable System Reminders")
+    reminder_days_before = SelectField("Reminder Days Before Due Date", choices=REMINDER_DAYS_CHOICES, default="5")
+    reminder_email = StringField("Reminder Destination Email", validators=[Optional(), Email(), Length(max=160)])
     submit = SubmitField("Save preferences")
+
 
 
 class ChangePasswordForm(FlaskForm):
