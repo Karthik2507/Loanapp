@@ -19,14 +19,14 @@
         <button class="btn secondary" id="csvPdfBtn" type="button" style="gap:6px">
           <i data-lucide="download"></i> Download <i data-lucide="chevron-down" style="width:14px;height:14px;margin-left:2px"></i>
         </button>
-        <div class="dropdown-menu" id="csvPdfDropdown" style="position:absolute;left:0;top:42px;background:#fff;border:1px solid var(--slate-200);border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;display:none;min-width:150px;z-index:30">
-          <a href="{{ url_for('schedule.download_csv', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--slate-700);font-size:13px">
+        <div class="dropdown-menu" id="csvPdfDropdown" style="position:absolute;left:0;top:42px;background:var(--bg-dropdown);border:1px solid var(--border-color);border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;display:none;min-width:150px;z-index:30;transition:background-color 0.3s ease, border-color 0.3s ease;">
+          <a href="{{ url_for('schedule.download_csv', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--text-main);font-size:13px">
             <i data-lucide="file-text" style="width:16px;height:16px"></i> Download CSV
           </a>
-          <a href="{{ url_for('schedule.download_pdf', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--slate-700);font-size:13px">
+          <a href="{{ url_for('schedule.download_pdf', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--text-main);font-size:13px">
             <i data-lucide="file" style="width:16px;height:16px"></i> Download PDF
           </a>
-          <a href="{{ url_for('schedule.annual_summary_csv', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--slate-700);font-size:13px">
+          <a href="{{ url_for('schedule.annual_summary_csv', loan_pk=loan.id) }}" class="dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;color:var(--text-main);font-size:13px">
             <i data-lucide="download"></i> Annual Summary
           </a>
         </div>
@@ -293,8 +293,8 @@
 {% block scripts %}
 <style>
 .dropdown-item:hover {
-  background: var(--slate-50);
-  color: var(--slate-900) !important;
+  background: var(--bg-hover);
+  color: var(--text-title) !important;
   text-decoration: none;
 }
 </style>

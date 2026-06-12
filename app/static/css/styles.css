@@ -65,7 +65,8 @@ button,input,select,textarea{font-family:inherit;font-size:14px}
 .btn.secondary{background:var(--bg-card);color:var(--text-main);border-color:var(--border-color)}
 .btn.secondary:hover{background:var(--bg-hover);color:var(--text-title)}
 .btn.success{background:var(--emerald-600);border-color:var(--emerald-600)}
-.btn.success:hover{background:var(--emerald-50);border-color:var(--emerald-50)}
+.btn.success:hover{background:var(--emerald-50);border-color:var(--emerald-50);color:var(--emerald-600)}
+html.dark .btn.success:hover{background:#064e3b;border-color:#064e3b;color:#34d399}
 .btn.danger{background:var(--danger);border-color:var(--danger)}
 .btn.ghost{background:transparent;border:none;color:var(--text-main);box-shadow:none}
 .btn.ghost:hover{background:var(--bg-hover)}
@@ -224,7 +225,7 @@ html.dark .badge.Balloon {background:#78350f;color:#fcd34d}
 
 /* Flash */
 .flashes{position:fixed;top:80px;right:24px;z-index:50;display:flex;flex-direction:column;gap:8px;max-width:380px}
-.flash{padding:12px 16px;border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);background:#fff;border-left:4px solid var(--blue-600);animation:slideIn .25s ease}
+.flash{padding:12px 16px;border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);border-left:4px solid var(--blue-600);animation:slideIn .25s ease;transition:background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease}
 .flash.success{border-left-color:var(--emerald-600)}
 .flash.danger{border-left-color:var(--danger)}
 .flash.warning{border-left-color:var(--warning)}
@@ -234,7 +235,7 @@ html.dark .badge.Balloon {background:#78350f;color:#fcd34d}
 /* Auth */
 .auth-wrap{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
 @media(max-width:900px){.auth-wrap{grid-template-columns:1fr}.auth-side{display:none}}
-.auth-form{display:flex;align-items:center;justify-content:center;padding:40px;background:#fff}
+.auth-form{display:flex;align-items:center;justify-content:center;padding:40px;background:var(--bg-card);color:var(--text-main);transition:background-color 0.3s ease, color 0.3s ease}
 .auth-form .inner{width:100%;max-width:380px}
 .auth-form h1{margin-bottom:6px}
 .auth-form .sub{color:var(--slate-500);margin-bottom:22px}
@@ -546,5 +547,107 @@ html.dark .notification-icon.import {
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Secondary Card & Projection Theme Styling */
+.secondary-card {
+  background: var(--bg-hover) !important;
+  border-color: var(--border-color) !important;
+}
+.projection-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+.projection-row:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+.projection-label {
+  color: var(--text-muted);
+}
+.projection-value {
+  color: var(--text-title);
+}
+.text-saved {
+  color: var(--emerald-600);
+}
+html.dark .text-saved {
+  color: #34d399;
+}
+
+/* Savings Box */
+.savings-box {
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.savings-box .savings-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--blue-600);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.savings-box .savings-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--blue-700);
+  margin-top: 4px;
+}
+.savings-box .savings-summary {
+  font-size: 12px;
+  color: var(--slate-500);
+  margin-top: 8px;
+}
+html.dark .savings-box {
+  background: #1e293b;
+  border-color: #243049;
+}
+html.dark .savings-box .savings-label {
+  color: #60a5fa;
+}
+html.dark .savings-box .savings-value {
+  color: #93c5fd;
+}
+html.dark .savings-box .savings-summary {
+  color: var(--text-muted);
+}
+
+/* Debt-Free Solver Result Box */
+.solver-result-box {
+  flex: 1;
+  min-width: 260px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+.solver-result-box .solver-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.solver-result-box .solver-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-title);
+  margin-top: 2px;
+}
+.solver-result-box .solver-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 

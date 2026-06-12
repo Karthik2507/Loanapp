@@ -99,31 +99,31 @@
       </form>
     </div>
     
-    <div class="card pad" style="background: var(--slate-50); border-color: var(--slate-200);">
+    <div class="card pad secondary-card">
       <h3 style="margin-bottom:16px">Savings Projection</h3>
       
       <div style="display:flex; flex-direction:column; gap:12px;">
-        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
-          <span style="color:var(--slate-500)">Current Remaining Balance</span>
-          <strong style="color:var(--slate-800)">{{ loan.remaining_balance|money }}</strong>
+        <div class="projection-row">
+          <span class="projection-label">Current Remaining Balance</span>
+          <strong class="projection-value">{{ loan.remaining_balance|money }}</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
-          <span style="color:var(--slate-500)">Current Unpaid Interest</span>
-          <strong style="color:var(--slate-800)">{{ remaining_interest|money }}</strong>
+        <div class="projection-row">
+          <span class="projection-label">Current Unpaid Interest</span>
+          <strong class="projection-value">{{ remaining_interest|money }}</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
-          <span style="color:var(--slate-500)">Simulated New EMI</span>
-          <strong id="refNewEmi" style="color:var(--slate-800)">-</strong>
+        <div class="projection-row">
+          <span class="projection-label">Simulated New EMI</span>
+          <strong id="refNewEmi" class="projection-value">-</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid var(--slate-200); padding-bottom:8px;">
-          <span style="color:var(--slate-500)">Simulated New Interest</span>
-          <strong id="refNewInterest" style="color:var(--slate-800)">-</strong>
+        <div class="projection-row">
+          <span class="projection-label">Simulated New Interest</span>
+          <strong id="refNewInterest" class="projection-value">-</strong>
         </div>
         
-        <div style="background:var(--blue-50); border:1px solid var(--blue-100); border-radius:10px; padding:16px; margin-top:8px; text-align:center;">
-          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600; letter-spacing:0.04em;">Estimated Net Savings</div>
-          <div id="refSavingsBlock" style="font-size:24px; font-weight:700; color:var(--blue-700); margin-top:4px;">-</div>
-          <div id="refSummaryText" style="font-size:12px; color:var(--slate-500); margin-top:8px;">Enter rate parameters to show savings estimate</div>
+        <div class="savings-box">
+          <div class="savings-label">Estimated Net Savings</div>
+          <div id="refSavingsBlock" class="savings-value">-</div>
+          <div id="refSummaryText" class="savings-summary">Enter rate parameters to show savings estimate</div>
         </div>
       </div>
     </div>
@@ -235,14 +235,15 @@ document.addEventListener('DOMContentLoaded', function() {
       refNewInterestVal.textContent = formatCurrency(newInterest);
       
       refSavingsBlock.textContent = formatCurrency(netSavings);
+      const isDark = document.documentElement.classList.contains('dark');
       if (netSavings > 0) {
-        refSavingsBlock.style.color = 'var(--emerald-600)';
+        refSavingsBlock.style.color = isDark ? '#34d399' : 'var(--emerald-600)';
         refSummaryText.textContent = `By refinancing, you save ${formatCurrency(netSavings)} in total interest payments!`;
       } else if (netSavings < 0) {
-        refSavingsBlock.style.color = 'var(--danger)';
+        refSavingsBlock.style.color = isDark ? '#f87171' : 'var(--danger)';
         refSummaryText.textContent = `Refinancing would result in a net loss of ${formatCurrency(Math.abs(netSavings))}.`;
       } else {
-        refSavingsBlock.style.color = 'var(--slate-800)';
+        refSavingsBlock.style.color = '';
         refSummaryText.textContent = 'Refinancing yields no net financial difference.';
       }
     }

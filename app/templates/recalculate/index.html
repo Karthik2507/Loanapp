@@ -58,7 +58,7 @@
   <div class="card-body">
     <div class="grid grid-3" style="margin-bottom: 20px;">
       <!-- Sandbox inputs card -->
-      <div class="card pad" style="border-style: dashed; background: var(--slate-50);">
+      <div class="card pad secondary-card" style="border-style: dashed;">
         <h4 style="margin-bottom: 12px;">Simulation Parameters</h4>
         <div class="form-row">
           <label>Regular Extra Payment (Monthly)</label>
@@ -74,18 +74,18 @@
       <div class="card pad" id="optionExtraCard" style="display:flex; flex-direction:column; justify-content:space-between;">
         <div>
           <span class="badge Active" style="margin-bottom:8px;">Strategy 1: Extra Monthly</span>
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
-            <span style="color:var(--slate-500);">New Tenure</span>
-            <strong id="optExtraTenure" style="color:var(--slate-800);">-</strong>
+          <div class="projection-row">
+            <span class="projection-label">New Tenure</span>
+            <strong id="optExtraTenure" class="projection-value">-</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
-            <span style="color:var(--slate-500);">Payoff Acceleration</span>
-            <strong id="optExtraSavedMonths" style="color:var(--emerald-600);">-</strong>
+          <div class="projection-row">
+            <span class="projection-label">Payoff Acceleration</span>
+            <strong id="optExtraSavedMonths" class="text-saved">-</strong>
           </div>
         </div>
-        <div style="background:var(--blue-50); border-radius:8px; padding:10px 14px; text-align:center; margin-top:8px;">
-          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600;">Interest Saved</div>
-          <div id="optExtraSavings" style="font-size:20px; font-weight:700; color:var(--blue-700); margin-top:2px;">-</div>
+        <div class="savings-box" style="padding:10px 14px; margin-top:8px;">
+          <div class="savings-label">Interest Saved</div>
+          <div id="optExtraSavings" class="savings-value" style="font-size:20px; margin-top:2px;">-</div>
         </div>
       </div>
       
@@ -93,34 +93,34 @@
       <div class="card pad" id="optionLumpsumCard" style="display:flex; flex-direction:column; justify-content:space-between;">
         <div>
           <span class="badge Pending" style="margin-bottom:8px;">Strategy 2: Lump-sum Prepayment</span>
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
-            <span style="color:var(--slate-500);">New Tenure</span>
-            <strong id="optLumpsumTenure" style="color:var(--slate-800);">-</strong>
+          <div class="projection-row">
+            <span class="projection-label">New Tenure</span>
+            <strong id="optLumpsumTenure" class="projection-value">-</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px solid var(--slate-100); padding-bottom:6px;">
-            <span style="color:var(--slate-500);">Payoff Acceleration</span>
-            <strong id="optLumpsumSavedMonths" style="color:var(--emerald-600);">-</strong>
+          <div class="projection-row">
+            <span class="projection-label">Payoff Acceleration</span>
+            <strong id="optLumpsumSavedMonths" class="text-saved">-</strong>
           </div>
         </div>
-        <div style="background:var(--blue-50); border-radius:8px; padding:10px 14px; text-align:center; margin-top:8px;">
-          <div style="font-size:11px; text-transform:uppercase; color:var(--blue-600); font-weight:600;">Interest Saved</div>
-          <div id="optLumpsumSavings" style="font-size:20px; font-weight:700; color:var(--blue-700); margin-top:2px;">-</div>
+        <div class="savings-box" style="padding:10px 14px; margin-top:8px;">
+          <div class="savings-label">Interest Saved</div>
+          <div id="optLumpsumSavings" class="savings-value" style="font-size:20px; margin-top:2px;">-</div>
         </div>
       </div>
     </div>
     
     <!-- Target Payoff Solver Card -->
-    <div class="card pad" style="background:var(--slate-50); border-color:var(--slate-200);">
+    <div class="card pad secondary-card">
       <h4 style="margin-bottom:12px;">Debt-Free Solver</h4>
       <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
         <div class="form-row" style="margin-bottom:0; flex:1; min-width:200px;">
           <label>Target Months to Pay Off</label>
           <input type="number" id="solverTargetMonths" placeholder="e.g. 24" min="1" value="{{ target_months|int }}">
         </div>
-        <div style="flex:1; min-width:260px; background:#fff; border:1px solid var(--slate-200); border-radius:10px; padding:12px 16px; box-shadow:var(--shadow-sm);">
-          <div style="font-size:11px; text-transform:uppercase; color:var(--slate-500); font-weight:600;">Required Monthly EMI</div>
-          <div id="solverRequiredEmi" style="font-size:20px; font-weight:700; color:var(--slate-850); margin-top:2px;">-</div>
-          <div id="solverExtraDetails" style="font-size:12px; color:var(--slate-500); margin-top:4px;">Enter a target month value to solve</div>
+        <div class="solver-result-box">
+          <div class="solver-label">Required Monthly EMI</div>
+          <div id="solverRequiredEmi" class="solver-value">-</div>
+          <div id="solverExtraDetails" class="solver-details">Enter a target month value to solve</div>
         </div>
       </div>
     </div>

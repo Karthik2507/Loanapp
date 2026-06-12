@@ -1,3 +1,12 @@
+// Configure Chart.js global defaults for light/dark theme on startup
+if (window.Chart) {
+  const isDark = document.documentElement.classList.contains('dark');
+  Chart.defaults.color = isDark ? '#94a3b8' : '#64748b';
+  if (Chart.defaults.scale && Chart.defaults.scale.grid) {
+    Chart.defaults.scale.grid.color = isDark ? '#243049' : '#e2e8f0';
+  }
+}
+
 // Tiny helpers
 function $(s, root = document) { return root.querySelector(s); }
 function $$(s, root = document) { return Array.from(root.querySelectorAll(s)); }
@@ -148,6 +157,36 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggle.addEventListener('click', () => {
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      
+      // Dynamically update all active chart colors
+      if (window.Chart) {
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? '#243049' : '#e2e8f0';
+        
+        Chart.defaults.color = textColor;
+        if (Chart.defaults.scale && Chart.defaults.scale.grid) {
+          Chart.defaults.scale.grid.color = gridColor;
+        }
+        
+        if (Chart.instances) {
+          Object.values(Chart.instances).forEach(chart => {
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+              chart.options.plugins.legend.labels.color = textColor;
+            }
+            if (chart.options.scales) {
+              Object.values(chart.options.scales).forEach(scale => {
+                if (scale.grid) {
+                  scale.grid.color = gridColor;
+                }
+                if (scale.ticks) {
+                  scale.ticks.color = textColor;
+                }
+              });
+            }
+            chart.update();
+          });
+        }
+      }
     });
   }
 

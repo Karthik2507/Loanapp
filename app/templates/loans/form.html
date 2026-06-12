@@ -14,13 +14,14 @@
   right: 0;
   top: 100%;
   margin-top: 5px;
-  background: #fff;
-  border: 1px solid var(--slate-200);
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
   z-index: 100;
   min-width: 180px;
   padding: 6px 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 .dropdown-menu.open {
   display: block;
@@ -31,13 +32,13 @@
   gap: 8px;
   padding: 8px 16px;
   font-size: 13px;
-  color: var(--slate-700);
+  color: var(--text-main);
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
 .dropdown-menu a:hover {
-  background: var(--slate-50);
-  color: var(--slate-900);
+  background: var(--bg-hover);
+  color: var(--text-title);
   text-decoration: none;
 }
 /* Upload Styles */
@@ -46,20 +47,26 @@
   border-radius: var(--radius-sm);
   padding: 32px 20px;
   text-align: center;
-  background: var(--slate-50);
+  background: var(--bg-hover);
   cursor: pointer;
   transition: all 0.2s ease;
+}
+html.dark .upload-dropzone {
+  border-color: #243049;
 }
 .upload-dropzone:hover, .upload-dropzone.dragover {
   border-color: var(--blue-500);
   background: var(--blue-50);
 }
+html.dark .upload-dropzone:hover, html.dark .upload-dropzone.dragover {
+  background: #0f2547;
+}
 .upload-dropzone i {
-  color: var(--slate-400);
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 .upload-dropzone p {
-  color: var(--slate-600);
+  color: var(--text-main);
   margin: 4px 0;
 }
 .warning-box {
@@ -69,11 +76,49 @@
   padding: 16px;
   margin-bottom: 20px;
 }
+.warning-box h4 {
+  color: #D97706;
+}
+.warning-box p {
+  color: #B45309;
+}
+html.dark .warning-box {
+  background: #3a2510;
+  border-color: #78350f;
+}
+html.dark .warning-box h4 {
+  color: #f59e0b;
+}
+html.dark .warning-box p {
+  color: #fbbf24;
+}
+
+.warning-table-wrap {
+  border: 1px solid #FDE68A;
+  background: #fff;
+}
+.warning-table-wrap th {
+  background: #FFFDF5 !important;
+  color: #92400E !important;
+}
+html.dark .warning-table-wrap {
+  border-color: #78350f;
+  background: #151c2c;
+}
+html.dark .warning-table-wrap th {
+  background: #1e293b !important;
+  color: #fcd34d !important;
+}
 
 .btn.secondary.active {
   background: var(--blue-50);
   border-color: var(--blue-500);
   color: var(--blue-700);
+}
+html.dark .btn.secondary.active {
+  background: #1e293b;
+  border-color: var(--blue-500);
+  color: #60a5fa;
 }
 @media (max-width: 900px) {
   #formContainer {
@@ -101,37 +146,42 @@
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
+html.dark .modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
 .modal-overlay.open {
   opacity: 1;
   pointer-events: auto;
 }
 .modal-container {
-  background: #fff;
+  background: var(--bg-card);
+  color: var(--text-main);
   border-radius: var(--radius-lg);
   max-width: 520px;
   width: 90%;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-lg);
   transform: scale(0.95) translateY(10px);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
-  border: 1px solid var(--slate-200);
+  border: 1px solid var(--border-color);
 }
 .modal-overlay.open .modal-container {
   transform: scale(1) translateY(0);
 }
 .modal-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--slate-100);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--slate-50);
+  background: var(--bg-hover);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 .modal-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--slate-900);
+  color: var(--text-title);
 }
 .modal-body {
   padding: 20px 24px;
@@ -141,7 +191,7 @@
 .modal-body p {
   font-size: 13px;
   line-height: 1.5;
-  color: var(--slate-500);
+  color: var(--text-muted);
   margin-bottom: 18px;
 }
 .confirm-grid {
@@ -149,27 +199,29 @@
   grid-template-columns: 140px 1fr;
   gap: 12px 16px;
   font-size: 13px;
-  background: var(--slate-50);
+  background: var(--bg-hover);
   padding: 16px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--slate-100);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 .confirm-label {
   font-weight: 600;
-  color: var(--slate-500);
+  color: var(--text-muted);
 }
 .confirm-value {
-  color: var(--slate-800);
+  color: var(--text-main);
   font-weight: 500;
   word-break: break-all;
 }
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid var(--slate-100);
+  border-top: 1px solid var(--border-light);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: var(--slate-50);
+  background: var(--bg-hover);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 </style>
 {% endblock %}
@@ -300,7 +352,7 @@
             <div class="confirm-value" id="val_bank_name"></div>
 
             <div class="confirm-label" id="lbl_loan_amount">Loan Amount</div>
-            <div class="confirm-value" id="val_loan_amount" style="font-weight:600;color:var(--slate-900)"></div>
+            <div class="confirm-value" id="val_loan_amount" style="font-weight:600;color:var(--text-title)"></div>
 
             <div class="confirm-label" id="lbl_down_payment">Down Payment</div>
             <div class="confirm-value" id="val_down_payment"></div>
@@ -365,7 +417,7 @@
               <h4 style="font-size:13px; color:var(--success); display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                 <i data-lucide="check-circle" style="width:16px;height:16px"></i> Ready to import (<span id="validCount">0</span> rows)
               </h4>
-              <div class="table-wrap" style="max-height:160px; border:1px solid var(--slate-100); border-radius:var(--radius-sm)">
+              <div class="table-wrap" style="max-height:160px; border:1px solid var(--border-light); border-radius:var(--radius-sm)">
                 <table class="tbl" style="font-size:12px">
                   <thead>
                     <tr>
@@ -386,18 +438,18 @@
 
             <!-- Warning rows -->
             <div id="warningContainer" class="warning-box" style="display:none;">
-              <h4 style="font-size:13px; color:#D97706; display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:600;">
+              <h4 style="font-size:13px; display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:600;">
                 <i data-lucide="alert-triangle" style="width:16px;height:16px"></i> Warnings: Missing required columns (<span id="invalidCount">0</span> rows)
               </h4>
-              <p style="font-size:12px; color:#B45309; margin-bottom:8px;">The rows below are missing one or more required columns (Start Date, Tenure, Interest, or Loan Amount) and will be **ignored** during import.</p>
-              <div class="table-wrap" style="max-height:120px; border:1px solid #FDE68A; border-radius:var(--radius-sm); background:#fff;">
+              <p style="font-size:12px; margin-bottom:8px;">The rows below are missing one or more required columns (Start Date, Tenure, Interest, or Loan Amount) and will be **ignored** during import.</p>
+              <div class="table-wrap warning-table-wrap" style="max-height:120px; border-radius:var(--radius-sm);">
                 <table class="tbl" style="font-size:12px">
                   <thead>
                     <tr>
-                      <th style="background:#FFFDF5">Row #</th>
-                      <th style="background:#FFFDF5">Loan ID</th>
-                      <th style="background:#FFFDF5">Loan Name</th>
-                      <th style="background:#FFFDF5">Missing Fields</th>
+                      <th>Row #</th>
+                      <th>Loan ID</th>
+                      <th>Loan Name</th>
+                      <th>Missing Fields</th>
                     </tr>
                   </thead>
                   <tbody id="invalidRowsTbody"></tbody>
