@@ -33,6 +33,99 @@
   </div>
 </div>
 
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card pad" id="print-tax-statement">
+    <div class="card-header" style="padding:0; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <h3>Fiscal Year Tax Summary</h3>
+      {% if fy_data %}
+        <button class="btn ghost sm no-print" onclick="window.print()" title="Print Statement" style="display:flex; align-items:center; gap:6px;">
+          <i data-lucide="printer" style="width:16px; height:16px;"></i> Print
+        </button>
+      {% endif %}
+    </div>
+    <div class="card-body" style="padding:0">
+      <form method="get" action="{{ url_for('reports.index') }}" class="no-print" style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+        <select name="fy" style="padding:8px 12px; border:1px solid var(--slate-200); border-radius:10px; flex-grow:1; font-family:inherit;">
+          <option value="">-- Select Fiscal Year --</option>
+          {% for choice in fy_choices %}
+            <option value="{{ choice.val }}" {% if selected_fy == choice.val %}selected{% endif %}>
+              {{ choice.label }}
+            </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn">Apply</button>
+      </form>
+      
+      {% if fy_data %}
+        <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:12px; margin-bottom:12px;">
+          <h4 style="margin:0 0 6px 0; font-size:14px; color:var(--slate-700);">Summary for {{ fy_data.label }}</h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center; font-size:12px;">
+            <div>
+              <div style="color:var(--slate-500);">Principal</div>
+              <div style="font-weight:600; color:var(--slate-900);">{{ fy_data.total_principal|money }}</div>
+            </div>
+            <div>
+              <div style="color:var(--slate-500);">Interest</div>
+              <div style="font-weight:600; color:var(--slate-900);">{{ fy_data.total_interest|money }}</div>
+            </div>
+            <div>
+              <div style="color:var(--slate-500);">Total Paid</div>
+              <div style="font-weight:600; color:var(--slate-900);">{{ fy_data.total_paid|money }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <table class="tbl" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>Loan</th>
+              <th class="num">Principal</th>
+              <th class="num">Interest</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in fy_data.loans %}
+              <tr>
+                <td>
+                  <strong>{{ row.loan_id }}</strong><br>
+                  <span style="font-size:10px;color:var(--slate-500)">{{ row.loan_name }}</span>
+                </td>
+                <td class="num">{{ row.principal|money }}</td>
+                <td class="num">{{ row.interest|money }}</td>
+                <td class="num">{{ row.total|money }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty" style="padding:24px 0;">
+          <i data-lucide="calculator"></i>
+          <p>Select a fiscal year to generate tax statement data.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <div class="card pad" style="display:flex; flex-direction:column;">
+    <div class="card-header" style="padding:0; margin-bottom:12px;">
+      <h3>Lender Risk Concentration</h3>
+    </div>
+    <div class="card-body" style="padding:0; flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      {% if by_bank %}
+        <div style="width:100%; height:200px; position:relative; margin:0 auto;">
+          <canvas id="riskChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty" style="padding:24px 0; width:100%;">
+          <i data-lucide="shield-alert"></i>
+          <p>No active loan data found for exposure report.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
 <div class="grid grid-2">
   <div class="card">
     <div class="card-header"><h3>Balloon Report</h3></div>
@@ -53,4 +146,134 @@
     </div>
   </div>
 </div>
+
+{% if by_bank %}
+<script id="bank-risk-data" type="application/json">
+{{ by_bank|tojson }}
+</script>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-tax-statement, #print-tax-statement * {
+    visibility: visible;
+  }
+  #print-tax-statement {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .no-print, .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const riskDataEl = document.getElementById('bank-risk-data');
+    if (riskDataEl) {
+        const bankData = JSON.parse(riskDataEl.textContent);
+        const ctx = document.getElementById('riskChart');
+        if (ctx && Object.keys(bankData).length > 0) {
+            const labels = Object.keys(bankData);
+            const data = Object.values(bankData);
+            
+            // Premium color palette
+            const colors = [
+                '#1E40AF', // Deep Blue
+                '#10B981', // Emerald Green
+                '#F59E0B', // Amber
+                '#EC4899', // Pink
+                '#8B5CF6', // Purple
+                '#3B82F6', // Blue
+                '#EF4444', // Red
+                '#6366F1'  // Indigo
+            ];
+            
+            const borderColors = colors.slice(0, labels.length);
+            const bgColors = colors.slice(0, labels.length).map(c => c + 'CC'); // 80% opacity
+            
+            const currencyCode = "{{ current_user.preferred_currency or 'INR' }}";
+            const locale = currencyCode === 'INR' ? 'en-IN' : 'en-US';
+            const formatter = new Intl.NumberFormat(locale, {
+                style: 'currency',
+                currency: currencyCode,
+                maximumFractionDigits: 0
+            });
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 11,
+                                    family: "'Inter', sans-serif"
+                                },
+                                padding: 12,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map(function(label, i) {
+                                            const meta = chart.getDatasetMeta(0);
+                                            const style = meta.controller.getStyle(i);
+                                            const value = data.datasets[0].data[i];
+                                            return {
+                                                text: label + ': ' + formatter.format(value),
+                                                fillStyle: style.backgroundColor,
+                                                strokeStyle: style.borderColor,
+                                                lineWidth: style.borderWidth,
+                                                hidden: isNaN(data.datasets[0].data[i]) || meta.data[i].hidden,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    return ' ' + label + ': ' + formatter.format(value);
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%',
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    }
+});
+</script>
 {% endblock %}

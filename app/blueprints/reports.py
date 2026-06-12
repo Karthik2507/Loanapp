@@ -14,15 +14,79 @@ reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 @reports_bp.route("/")
 @login_required
 def index():
+    from datetime import date
+    from app.models import Schedule
+    
     loans = current_user.loans.filter_by(is_archived=False).all()
     total_borrowed = sum(l.loan_amount for l in loans)
     total_remaining = sum(l.remaining_balance for l in loans)
     total_interest = sum(s.interest for l in loans for s in l.schedules)
     balloons = [l for l in loans if l.balloon_date]
     closures = [l for l in loans if l.loan_status == "Completed"]
+    
+    # 1. Exposure Risk data (active outstanding balance by bank)
+    by_bank = {}
+    for l in loans:
+        if l.loan_status != "Completed":
+            by_bank[l.bank_name] = by_bank.get(l.bank_name, 0.0) + (l.remaining_balance or 0.0)
+            
+    # 2. Fiscal Year choices based on oldest loan start date
+    oldest_loan = current_user.loans.order_by(Loan.start_date.asc()).first()
+    start_year = oldest_loan.start_date.year if oldest_loan else date.today().year
+    current_year = date.today().year
+    
+    fy_choices = []
+    for y in range(start_year - 1, current_year + 1):
+        fy_choices.append({
+            "val": y,
+            "label": f"FY {y}-{str(y+1)[2:]} (Apr {y} - Mar {y+1})"
+        })
+        
+    # 3. Dynamic Fiscal Year Tax Summary Report
+    selected_fy = request.args.get("fy", type=int)
+    fy_data = None
+    if selected_fy:
+        fy_start = date(selected_fy, 4, 1)
+        fy_end = date(selected_fy + 1, 3, 31)
+        
+        fy_data = {
+            "label": f"FY {selected_fy}-{str(selected_fy+1)[2:]}",
+            "loans": [],
+            "total_principal": 0.0,
+            "total_interest": 0.0,
+            "total_paid": 0.0
+        }
+        for l in loans:
+            # query paid schedules in date range
+            paid_installments = l.schedules.filter(
+                Schedule.payment_status == "Paid",
+                Schedule.paid_date >= fy_start,
+                Schedule.paid_date <= fy_end
+            ).all()
+            if paid_installments:
+                p_sum = sum(s.principal for s in paid_installments)
+                i_sum = sum(s.interest for s in paid_installments)
+                tot = sum(s.emi for s in paid_installments)
+                fy_data["loans"].append({
+                    "loan_id": l.loan_id,
+                    "loan_name": l.loan_name,
+                    "principal": round(p_sum, 2),
+                    "interest": round(i_sum, 2),
+                    "total": round(tot, 2)
+                })
+                fy_data["total_principal"] += p_sum
+                fy_data["total_interest"] += i_sum
+                fy_data["total_paid"] += tot
+                
+        # round sums
+        fy_data["total_principal"] = round(fy_data["total_principal"], 2)
+        fy_data["total_interest"] = round(fy_data["total_interest"], 2)
+        fy_data["total_paid"] = round(fy_data["total_paid"], 2)
+        
     return render_template("reports/index.html", loans=loans,
                            total_borrowed=total_borrowed, total_remaining=total_remaining,
-                           total_interest=total_interest, balloons=balloons, closures=closures)
+                           total_interest=total_interest, balloons=balloons, closures=closures,
+                           by_bank=by_bank, fy_choices=fy_choices, selected_fy=selected_fy, fy_data=fy_data)
 
 
 @reports_bp.route("/export.csv")
