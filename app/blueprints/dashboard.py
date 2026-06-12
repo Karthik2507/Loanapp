@@ -23,13 +23,13 @@ def _stats(loans):
                 total_paid += s.emi
             else:
                 outstanding += s.emi
-    active = sum(1 for l in loans if l.loan_status in ("Active", "Balloon Pending"))
+    active = sum(1 for l in loans if l.loan_status != "Completed")
     completed = sum(1 for l in loans if l.loan_status == "Completed")
     closed_this_month = sum(1 for l in loans if l.closed_at and l.closed_at.date() >= month_start)
     remaining = sum(l.remaining_balance for l in loans)
 
     # Weighted Average Interest Rate
-    active_loans = [l for l in loans if l.loan_status in ("Active", "Balloon Pending")]
+    active_loans = [l for l in loans if l.loan_status != "Completed"]
     total_remaining_active = sum(l.remaining_balance for l in active_loans)
     if total_remaining_active > 0:
         weighted_interest_rate = sum(l.interest_rate * l.remaining_balance for l in active_loans) / total_remaining_active
@@ -139,7 +139,7 @@ def _charts(loans):
 
     # Smart insights
     insights = []
-    active_loans = [l for l in loans if l.loan_status in ("Active", "Balloon Pending")]
+    active_loans = [l for l in loans if l.loan_status != "Completed"]
     
     # Refinancing alerts for high rates
     for l in active_loans:
